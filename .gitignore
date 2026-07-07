@@ -1,0 +1,57 @@
+# Laravel
+/vendor
+/node_modules
+/public/build
+/public/hot
+/storage/*.key
+/storage/app/public
+/storage/debugbar
+/storage/framework/cache/*
+!/storage/framework/cache/.gitignore
+/storage/framework/sessions/*
+!/storage/framework/sessions/.gitignore
+/storage/framework/testing/*
+!/storage/framework/testing/.gitignore
+/storage/framework/views/*
+!/storage/framework/views/.gitignore
+/storage/logs/*
+!/storage/logs/.gitignore
+/bootstrap/cache/*
+!/bootstrap/cache/.gitignore
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Database
+/database/*.sqlite
+
+# Testing
+.phpunit.result.cache
+coverage/
+
+# Composer
+composer.phar
+
+# NPM / Yarn / PNPM
+npm-debug.log
+yarn-error.log
+yarn-debug.log
+pnpm-debug.log
+
+# IDE
+/.idea
+/.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/launch.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Misc
+*.log
+*.tmp
+*.swp
