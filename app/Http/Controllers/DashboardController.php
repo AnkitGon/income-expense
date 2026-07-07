@@ -92,21 +92,10 @@ class DashboardController extends Controller
             ]);
         }
 
-        // Generate dynamic list of last 12 months for selector options
-        $monthOptions = [];
-        for ($i = 0; $i < 12; $i++) {
-            $month = Carbon::now()->subMonths($i);
-            $monthOptions[] = [
-                'value' => $month->format('Y-m'),
-                'label' => $month->format('F Y'),
-            ];
-        }
-
         return Inertia::render('dashboard', [
             'pendingInvitations' => $pendingInvitations,
             'summary' => $categories,
             'selectedMonth' => $selectedMonth,
-            'monthOptions' => $monthOptions,
         ]);
     }
 }

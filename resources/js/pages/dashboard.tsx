@@ -17,14 +17,12 @@ type Props = {
     pendingInvitations?: DashboardInvitation[];
     summary: CategorySummary[];
     selectedMonth: string;
-    monthOptions: { value: string; label: string }[];
 };
 
 export default function Dashboard({
     pendingInvitations = [],
     summary = [],
     selectedMonth,
-    monthOptions = [],
 }: Props) {
     const page = usePage();
     const currentTeam = page.props.currentTeam as Team;
@@ -33,7 +31,7 @@ export default function Dashboard({
         pendingInvitations.length > 0,
     );
 
-    const handleMonthChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const handleMonthChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const month = e.target.value;
         router.get(
             dashboard(currentTeam.slug).url,
@@ -79,18 +77,13 @@ export default function Dashboard({
                         >
                             Month:
                         </label>
-                        <select
+                        <input
+                            type="month"
                             id="month-select"
                             value={selectedMonth}
                             onChange={handleMonthChange}
                             className="flex h-9 w-44 rounded-md border border-input border-neutral-200 bg-transparent px-3 py-1 text-sm text-foreground shadow-xs transition-colors focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-hidden dark:border-neutral-800 dark:bg-neutral-900"
-                        >
-                            {monthOptions.map((option) => (
-                                <option key={option.value} value={option.value}>
-                                    {option.label}
-                                </option>
-                            ))}
-                        </select>
+                        />
                     </div>
                 </div>
 
