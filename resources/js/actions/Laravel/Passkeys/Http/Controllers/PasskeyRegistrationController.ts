@@ -137,7 +137,7 @@ store.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
  * @see vendor/laravel/passkeys/src/Http/Controllers/PasskeyRegistrationController.php:68
  * @route '/user/passkeys/{passkey}'
  */
-export const destroy = (args: { passkey: string | number | { id: string | number } } | [passkey: string | number | { id: string | number } ] | string | number | { id: string | number }, options?: RouteQueryOptions): RouteDefinition<'delete'> => ({
+export const destroy = (args: { passkey: number | { id: number } } | [passkey: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'delete'> => ({
     url: destroy.url(args, options),
     method: 'delete',
 })
@@ -152,7 +152,7 @@ destroy.definition = {
  * @see vendor/laravel/passkeys/src/Http/Controllers/PasskeyRegistrationController.php:68
  * @route '/user/passkeys/{passkey}'
  */
-destroy.url = (args: { passkey: string | number | { id: string | number } } | [passkey: string | number | { id: string | number } ] | string | number | { id: string | number }, options?: RouteQueryOptions) => {
+destroy.url = (args: { passkey: number | { id: number } } | [passkey: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions) => {
     if (typeof args === 'string' || typeof args === 'number') {
         args = { passkey: args }
     }
@@ -185,7 +185,7 @@ destroy.url = (args: { passkey: string | number | { id: string | number } } | [p
  * @see vendor/laravel/passkeys/src/Http/Controllers/PasskeyRegistrationController.php:68
  * @route '/user/passkeys/{passkey}'
  */
-destroy.delete = (args: { passkey: string | number | { id: string | number } } | [passkey: string | number | { id: string | number } ] | string | number | { id: string | number }, options?: RouteQueryOptions): RouteDefinition<'delete'> => ({
+destroy.delete = (args: { passkey: number | { id: number } } | [passkey: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'delete'> => ({
     url: destroy.url(args, options),
     method: 'delete',
 })
@@ -195,7 +195,7 @@ destroy.delete = (args: { passkey: string | number | { id: string | number } } |
  * @see vendor/laravel/passkeys/src/Http/Controllers/PasskeyRegistrationController.php:68
  * @route '/user/passkeys/{passkey}'
  */
-    const destroyForm = (args: { passkey: string | number | { id: string | number } } | [passkey: string | number | { id: string | number } ] | string | number | { id: string | number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+    const destroyForm = (args: { passkey: number | { id: number } } | [passkey: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
         action: destroy.url(args, {
                     [options?.mergeQuery ? 'mergeQuery' : 'query']: {
                         _method: 'DELETE',
@@ -210,7 +210,7 @@ destroy.delete = (args: { passkey: string | number | { id: string | number } } |
  * @see vendor/laravel/passkeys/src/Http/Controllers/PasskeyRegistrationController.php:68
  * @route '/user/passkeys/{passkey}'
  */
-        destroyForm.delete = (args: { passkey: string | number | { id: string | number } } | [passkey: string | number | { id: string | number } ] | string | number | { id: string | number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+        destroyForm.delete = (args: { passkey: number | { id: number } } | [passkey: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
             action: destroy.url(args, {
                         [options?.mergeQuery ? 'mergeQuery' : 'query']: {
                             _method: 'DELETE',

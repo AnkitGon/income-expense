@@ -1,9 +1,12 @@
 <?php
 
 use App\Enums\TeamRole;
+use App\Models\Category;
 use App\Models\Team;
 use App\Models\TeamInvitation;
+use App\Models\Transaction;
 use App\Models\User;
+use Carbon\Carbon;
 use Inertia\Testing\AssertableInertia as Assert;
 
 test('guests are redirected to the login page', function () {
@@ -132,4 +135,74 @@ test('dashboard does not include or delete other users invitations', function ()
     $this->assertDatabaseHas('team_invitations', [
         'id' => $invitation->id,
     ]);
+});
+
+test('dashboard shows transaction summary by category for selected month', function () {
+    $user = User::factory()->create();
+    $team = $user->currentTeam;
+    $categoryA = Category::factory()->create(['team_id' => $team->id, 'name' => 'Category A']);
+    $categoryB = Category::factory()->create(['team_id' => $team->id, 'name' => 'Category B']);
+
+    $currentMonth = Carbon::now()->format('Y-m');
+
+    // Create credit transaction for Category A
+    Transaction::factory()->create([
+        'team_id' => $team->id,
+        'category_id' => $categoryA->id,
+        'type' => 'credit',
+        'amount' => 100.00,
+        'date' => Carbon::now()->startOfMonth()->toDateString(),
+    ]);
+
+    // Create debit transaction for Category B
+    Transaction::factory()->create([
+        'team_id' => $team->id,
+        'category_id' => $categoryB->id,
+        'type' => 'debit',
+        'amount' => 40.00,
+        'date' => Carbon::now()->startOfMonth()->toDateString(),
+    ]);
+
+    // Create transaction in a different month (should be excluded)
+    Transaction::factory()->create([
+        'team_id' => $team->id,
+        'category_id' => $categoryA->id,
+        'type' => 'credit',
+        'amount' => 500.00,
+        'date' => Carbon::now()->subMonth()->startOfMonth()->toDateString(),
+    ]);
+
+    $response = $this
+        ->actingAs($user)
+        ->get(route('dashboard', ['current_team' => $team->slug]));
+
+    $response->assertOk();
+    $response->assertInertia(fn (Assert $page) => $page
+        ->component('dashboard')
+        ->has('summary', 2)
+        ->where('summary.0.name', 'Category A')
+        ->where('summary.0.credit', 100)
+        ->where('summary.0.debit', 0)
+        ->where('summary.1.name', 'Category B')
+        ->where('summary.1.credit', 0)
+        ->where('summary.1.debit', 40)
+    );
+});
+
+test('dashboard filters out categories with zero credit and debit', function () {
+    $user = User::factory()->create();
+    $team = $user->currentTeam;
+
+    // Category with no transactions
+    Category::factory()->create(['team_id' => $team->id, 'name' => 'Zero Category']);
+
+    $response = $this
+        ->actingAs($user)
+        ->get(route('dashboard', ['current_team' => $team->slug]));
+
+    $response->assertOk();
+    $response->assertInertia(fn (Assert $page) => $page
+        ->component('dashboard')
+        ->has('summary', 0) // Zero Category is filtered out since it has 0 credits and debits
+    );
 });

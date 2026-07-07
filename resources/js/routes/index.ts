@@ -290,10 +290,10 @@ home.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     home.form = homeForm
 /**
 * @see \App\Http\Controllers\DashboardController::__invoke
- * @see app/Http/Controllers/DashboardController.php:12
+ * @see app/Http/Controllers/DashboardController.php:14
  * @route '/{current_team}/dashboard'
  */
-export const dashboard = (args: { current_team: string | number } | [current_team: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
+export const dashboard = (args: { current_team: string | { slug: string } } | [current_team: string | { slug: string } ] | string | { slug: string }, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: dashboard.url(args, options),
     method: 'get',
 })
@@ -305,14 +305,17 @@ dashboard.definition = {
 
 /**
 * @see \App\Http\Controllers\DashboardController::__invoke
- * @see app/Http/Controllers/DashboardController.php:12
+ * @see app/Http/Controllers/DashboardController.php:14
  * @route '/{current_team}/dashboard'
  */
-dashboard.url = (args: { current_team: string | number } | [current_team: string | number ] | string | number, options?: RouteQueryOptions) => {
+dashboard.url = (args: { current_team: string | { slug: string } } | [current_team: string | { slug: string } ] | string | { slug: string }, options?: RouteQueryOptions) => {
     if (typeof args === 'string' || typeof args === 'number') {
         args = { current_team: args }
     }
 
+            if (typeof args === 'object' && !Array.isArray(args) && 'slug' in args) {
+            args = { current_team: args.slug }
+        }
     
     if (Array.isArray(args)) {
         args = {
@@ -323,7 +326,9 @@ dashboard.url = (args: { current_team: string | number } | [current_team: string
     args = applyUrlDefaults(args)
 
     const parsedArgs = {
-                        current_team: args.current_team,
+                        current_team: typeof args.current_team === 'object'
+                ? args.current_team.slug
+                : args.current_team,
                 }
 
     return dashboard.definition.url
@@ -333,48 +338,48 @@ dashboard.url = (args: { current_team: string | number } | [current_team: string
 
 /**
 * @see \App\Http\Controllers\DashboardController::__invoke
- * @see app/Http/Controllers/DashboardController.php:12
+ * @see app/Http/Controllers/DashboardController.php:14
  * @route '/{current_team}/dashboard'
  */
-dashboard.get = (args: { current_team: string | number } | [current_team: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
+dashboard.get = (args: { current_team: string | { slug: string } } | [current_team: string | { slug: string } ] | string | { slug: string }, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: dashboard.url(args, options),
     method: 'get',
 })
 /**
 * @see \App\Http\Controllers\DashboardController::__invoke
- * @see app/Http/Controllers/DashboardController.php:12
+ * @see app/Http/Controllers/DashboardController.php:14
  * @route '/{current_team}/dashboard'
  */
-dashboard.head = (args: { current_team: string | number } | [current_team: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'head'> => ({
+dashboard.head = (args: { current_team: string | { slug: string } } | [current_team: string | { slug: string } ] | string | { slug: string }, options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     url: dashboard.url(args, options),
     method: 'head',
 })
 
     /**
 * @see \App\Http\Controllers\DashboardController::__invoke
- * @see app/Http/Controllers/DashboardController.php:12
+ * @see app/Http/Controllers/DashboardController.php:14
  * @route '/{current_team}/dashboard'
  */
-    const dashboardForm = (args: { current_team: string | number } | [current_team: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+    const dashboardForm = (args: { current_team: string | { slug: string } } | [current_team: string | { slug: string } ] | string | { slug: string }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
         action: dashboard.url(args, options),
         method: 'get',
     })
 
             /**
 * @see \App\Http\Controllers\DashboardController::__invoke
- * @see app/Http/Controllers/DashboardController.php:12
+ * @see app/Http/Controllers/DashboardController.php:14
  * @route '/{current_team}/dashboard'
  */
-        dashboardForm.get = (args: { current_team: string | number } | [current_team: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+        dashboardForm.get = (args: { current_team: string | { slug: string } } | [current_team: string | { slug: string } ] | string | { slug: string }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
             action: dashboard.url(args, options),
             method: 'get',
         })
             /**
 * @see \App\Http\Controllers\DashboardController::__invoke
- * @see app/Http/Controllers/DashboardController.php:12
+ * @see app/Http/Controllers/DashboardController.php:14
  * @route '/{current_team}/dashboard'
  */
-        dashboardForm.head = (args: { current_team: string | number } | [current_team: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+        dashboardForm.head = (args: { current_team: string | { slug: string } } | [current_team: string | { slug: string } ] | string | { slug: string }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
             action: dashboard.url(args, {
                         [options?.mergeQuery ? 'mergeQuery' : 'query']: {
                             _method: 'HEAD',

@@ -2,14 +2,16 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Team;
 use App\Models\TeamInvitation;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class DashboardController extends Controller
 {
-    public function __invoke(Request $request): Response
+    public function __invoke(Request $request, Team $current_team): Response
     {
         $email = strtolower($request->user()->email);
 
@@ -31,8 +33,80 @@ class DashboardController extends Controller
                 ],
             ]);
 
+        $selectedMonth = $request->input('month', Carbon::now()->format('Y-m'));
+        if (! preg_match('/^\d{4}-\d{2}$/', $selectedMonth)) {
+            $selectedMonth = Carbon::now()->format('Y-m');
+        }
+
+        $startDate = Carbon::parse($selectedMonth.'-01')->startOfMonth()->toDateString();
+        $endDate = Carbon::parse($selectedMonth.'-01')->endOfMonth()->toDateString();
+
+        $categories = $current_team->categories()
+            ->get()
+            ->map(function ($category) use ($current_team, $startDate, $endDate) {
+                $credit = $current_team->transactions()
+                    ->where('category_id', $category->id)
+                    ->where('type', 'credit')
+                    ->whereBetween('date', [$startDate, $endDate])
+                    ->sum('amount');
+
+                $debit = $current_team->transactions()
+                    ->where('category_id', $category->id)
+                    ->where('type', 'debit')
+                    ->whereBetween('date', [$startDate, $endDate])
+                    ->sum('amount');
+
+                return [
+                    'id' => $category->id,
+                    'name' => $category->name,
+                    'credit' => (float) $credit,
+                    'debit' => (float) $debit,
+                    'total' => (float) ($credit - $debit),
+                ];
+            })
+            ->filter(function ($item) {
+                return $item['credit'] > 0 || $item['debit'] > 0;
+            })
+            ->values();
+
+        // Include uncategorized transactions
+        $uncategorizedCredit = $current_team->transactions()
+            ->whereNull('category_id')
+            ->where('type', 'credit')
+            ->whereBetween('date', [$startDate, $endDate])
+            ->sum('amount');
+
+        $uncategorizedDebit = $current_team->transactions()
+            ->whereNull('category_id')
+            ->where('type', 'debit')
+            ->whereBetween('date', [$startDate, $endDate])
+            ->sum('amount');
+
+        if ($uncategorizedCredit > 0 || $uncategorizedDebit > 0) {
+            $categories->push([
+                'id' => null,
+                'name' => __('Uncategorized'),
+                'credit' => (float) $uncategorizedCredit,
+                'debit' => (float) $uncategorizedDebit,
+                'total' => (float) ($uncategorizedCredit - $uncategorizedDebit),
+            ]);
+        }
+
+        // Generate dynamic list of last 12 months for selector options
+        $monthOptions = [];
+        for ($i = 0; $i < 12; $i++) {
+            $month = Carbon::now()->subMonths($i);
+            $monthOptions[] = [
+                'value' => $month->format('Y-m'),
+                'label' => $month->format('F Y'),
+            ];
+        }
+
         return Inertia::render('dashboard', [
             'pendingInvitations' => $pendingInvitations,
+            'summary' => $categories,
+            'selectedMonth' => $selectedMonth,
+            'monthOptions' => $monthOptions,
         ]);
     }
 }

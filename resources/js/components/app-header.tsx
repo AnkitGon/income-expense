@@ -1,5 +1,13 @@
 import { Link, usePage } from '@inertiajs/react';
-import { BookOpen, Folder, LayoutGrid, Menu, Search } from 'lucide-react';
+import {
+    BookOpen,
+    DollarSign,
+    Folder,
+    LayoutGrid,
+    Menu,
+    Search,
+    Tags,
+} from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import AppLogoIcon from '@/components/app-logo-icon';
 import { Breadcrumbs } from '@/components/breadcrumbs';
@@ -35,6 +43,8 @@ import { useCurrentUrl } from '@/hooks/use-current-url';
 import { useInitials } from '@/hooks/use-initials';
 import { cn, toUrl } from '@/lib/utils';
 import { dashboard } from '@/routes';
+import { index as categoriesIndex } from '@/routes/categories';
+import { index as transactionsIndex } from '@/routes/transactions';
 import type { BreadcrumbItem, NavItem } from '@/types';
 
 type Props = {
@@ -63,12 +73,26 @@ export function AppHeader({ breadcrumbs = [] }: Props) {
     const getInitials = useInitials();
     const { isCurrentUrl, whenCurrentUrl } = useCurrentUrl();
     const dashboardUrl = currentTeam ? dashboard(currentTeam.slug) : '/';
+    const categoriesUrl = currentTeam ? categoriesIndex(currentTeam.slug) : '#';
+    const transactionsUrl = currentTeam
+        ? transactionsIndex(currentTeam.slug)
+        : '#';
 
     const mainNavItems: NavItem[] = [
         {
             title: 'Dashboard',
             href: dashboardUrl,
             icon: LayoutGrid,
+        },
+        {
+            title: 'Categories',
+            href: categoriesUrl,
+            icon: Tags,
+        },
+        {
+            title: 'Transactions',
+            href: transactionsUrl,
+            icon: DollarSign,
         },
     ];
 
