@@ -27,6 +27,20 @@ class TransactionController extends Controller
                         });
                 });
             })
+            ->when($request->has('category_id'), function ($query) use ($request) {
+                $categoryId = $request->category_id;
+                if ($categoryId === 'uncategorized' || $categoryId === null || $categoryId === '') {
+                    $query->whereNull('category_id');
+                } else {
+                    $query->where('category_id', $categoryId);
+                }
+            })
+            ->when($request->from_date, function ($query, $fromDate) {
+                $query->where('date', '>=', $fromDate);
+            })
+            ->when($request->to_date, function ($query, $toDate) {
+                $query->where('date', '<=', $toDate);
+            })
             ->latest('date')
             ->latest('id')
             ->paginate(10)
@@ -39,7 +53,7 @@ class TransactionController extends Controller
         return Inertia::render('transactions/index', [
             'transactions' => $transactions,
             'categories' => $categories,
-            'filters' => $request->only(['search']),
+            'filters' => $request->only(['search', 'category_id', 'from_date', 'to_date']),
         ]);
     }
 

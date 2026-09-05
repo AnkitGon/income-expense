@@ -206,3 +206,66 @@ test('dashboard filters out categories with zero credit and debit', function () 
         ->has('summary', 0) // Zero Category is filtered out since it has 0 credits and debits
     );
 });
+
+test('dashboard shows transaction summary by category for custom date range', function () {
+    $user = User::factory()->create();
+    $team = $user->currentTeam;
+    $categoryA = Category::factory()->create(['team_id' => $team->id, 'name' => 'Category A']);
+    $categoryB = Category::factory()->create(['team_id' => $team->id, 'name' => 'Category B']);
+
+    // Create transaction within range
+    Transaction::factory()->create([
+        'team_id' => $team->id,
+        'category_id' => $categoryA->id,
+        'type' => 'credit',
+        'amount' => 120.00,
+        'date' => '2026-08-10',
+    ]);
+
+    // Create transaction within range
+    Transaction::factory()->create([
+        'team_id' => $team->id,
+        'category_id' => $categoryB->id,
+        'type' => 'debit',
+        'amount' => 30.00,
+        'date' => '2026-08-12',
+    ]);
+
+    // Create transaction outside range (before)
+    Transaction::factory()->create([
+        'team_id' => $team->id,
+        'category_id' => $categoryA->id,
+        'type' => 'credit',
+        'amount' => 500.00,
+        'date' => '2026-08-09',
+    ]);
+
+    // Create transaction outside range (after)
+    Transaction::factory()->create([
+        'team_id' => $team->id,
+        'category_id' => $categoryA->id,
+        'type' => 'credit',
+        'amount' => 600.00,
+        'date' => '2026-08-16',
+    ]);
+
+    $response = $this
+        ->actingAs($user)
+        ->get(route('dashboard', [
+            'current_team' => $team->slug,
+            'from_date' => '2026-08-10',
+            'to_date' => '2026-08-15',
+        ]));
+
+    $response->assertOk();
+    $response->assertInertia(fn (Assert $page) => $page
+        ->component('dashboard')
+        ->has('summary', 2)
+        ->where('summary.0.name', 'Category A')
+        ->where('summary.0.credit', 120)
+        ->where('summary.1.name', 'Category B')
+        ->where('summary.1.debit', 30)
+        ->where('startDate', '2026-08-10')
+        ->where('endDate', '2026-08-15')
+    );
+});

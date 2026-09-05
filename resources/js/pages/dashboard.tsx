@@ -1,8 +1,9 @@
-import { Head, router, usePage } from '@inertiajs/react';
-import { useState } from 'react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
+import { useEffect, useState } from 'react';
 import PendingInvitationsModal from '@/components/pending-invitations-modal';
 import Heading from '@/components/heading';
 import { dashboard } from '@/routes';
+import { index as transactionsIndex } from '@/routes/transactions';
 import type { DashboardInvitation, Team } from '@/types';
 
 type CategorySummary = {
@@ -17,12 +18,16 @@ type Props = {
     pendingInvitations?: DashboardInvitation[];
     summary: CategorySummary[];
     selectedMonth: string;
+    startDate: string;
+    endDate: string;
 };
 
 export default function Dashboard({
     pendingInvitations = [],
     summary = [],
     selectedMonth,
+    startDate,
+    endDate,
 }: Props) {
     const page = usePage();
     const currentTeam = page.props.currentTeam as Team;
@@ -31,6 +36,30 @@ export default function Dashboard({
         pendingInvitations.length > 0,
     );
 
+    const [fromDate, setFromDate] = useState(startDate);
+    const [toDate, setToDate] = useState(endDate);
+
+    useEffect(() => {
+        setFromDate(startDate);
+        setToDate(endDate);
+    }, [startDate, endDate]);
+
+    const getCategoryTransactionsUrl = (categoryId: number | null) => {
+        const url = new URL(transactionsIndex(currentTeam.slug).url, window.location.origin);
+        if (categoryId === null) {
+            url.searchParams.set('category_id', 'uncategorized');
+        } else {
+            url.searchParams.set('category_id', String(categoryId));
+        }
+        if (fromDate) {
+            url.searchParams.set('from_date', fromDate);
+        }
+        if (toDate) {
+            url.searchParams.set('to_date', toDate);
+        }
+        return url.pathname + url.search;
+    };
+
     const handleMonthChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const month = e.target.value;
         router.get(
@@ -38,6 +67,30 @@ export default function Dashboard({
             { month },
             { preserveState: true },
         );
+    };
+
+    const handleFromDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const value = e.target.value;
+        setFromDate(value);
+        if (value && toDate && value <= toDate) {
+            router.get(
+                dashboard(currentTeam.slug).url,
+                { from_date: value, to_date: toDate },
+                { preserveState: true },
+            );
+        }
+    };
+
+    const handleToDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const value = e.target.value;
+        setToDate(value);
+        if (fromDate && value && fromDate <= value) {
+            router.get(
+                dashboard(currentTeam.slug).url,
+                { from_date: fromDate, to_date: value },
+                { preserveState: true },
+            );
+        }
     };
 
     // Calculate Column Totals
@@ -69,21 +122,57 @@ export default function Dashboard({
                         description="Overview of your team's income and expenses."
                     />
 
-                    {/* Month Selector */}
-                    <div className="flex items-center gap-2">
-                        <label
-                            htmlFor="month-select"
-                            className="text-sm font-medium whitespace-nowrap text-muted-foreground"
-                        >
-                            Month:
-                        </label>
-                        <input
-                            type="month"
-                            id="month-select"
-                            value={selectedMonth}
-                            onChange={handleMonthChange}
-                            className="flex h-9 w-44 rounded-md border border-input border-neutral-200 bg-transparent px-3 py-1 text-sm text-foreground shadow-xs transition-colors focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-hidden dark:border-neutral-800 dark:bg-neutral-900"
-                        />
+                    {/* Date Filters */}
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                        <div className="flex items-center gap-2">
+                            <label
+                                htmlFor="month-select"
+                                className="text-sm font-medium whitespace-nowrap text-muted-foreground"
+                            >
+                                Month:
+                            </label>
+                            <input
+                                type="month"
+                                id="month-select"
+                                value={selectedMonth || ''}
+                                onChange={handleMonthChange}
+                                className="flex h-9 w-44 rounded-md border border-input border-neutral-200 bg-transparent px-3 py-1 text-sm text-foreground shadow-xs transition-colors focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-hidden dark:border-neutral-800 dark:bg-neutral-900"
+                            />
+                        </div>
+
+                        <span className="hidden text-xs text-muted-foreground sm:inline">or</span>
+
+                        <div className="flex items-center gap-2">
+                            <label
+                                htmlFor="from-date"
+                                className="text-sm font-medium whitespace-nowrap text-muted-foreground"
+                            >
+                                From:
+                            </label>
+                            <input
+                                type="date"
+                                id="from-date"
+                                value={fromDate}
+                                onChange={handleFromDateChange}
+                                className="flex h-9 w-36 rounded-md border border-input border-neutral-200 bg-transparent px-3 py-1 text-sm text-foreground shadow-xs transition-colors focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-hidden dark:border-neutral-800 dark:bg-neutral-900"
+                            />
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                            <label
+                                htmlFor="to-date"
+                                className="text-sm font-medium whitespace-nowrap text-muted-foreground"
+                            >
+                                To:
+                            </label>
+                            <input
+                                type="date"
+                                id="to-date"
+                                value={toDate}
+                                onChange={handleToDateChange}
+                                className="flex h-9 w-36 rounded-md border border-input border-neutral-200 bg-transparent px-3 py-1 text-sm text-foreground shadow-xs transition-colors focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-hidden dark:border-neutral-800 dark:bg-neutral-900"
+                            />
+                        </div>
                     </div>
                 </div>
 
@@ -118,7 +207,12 @@ export default function Dashboard({
                                             className="transition-colors hover:bg-muted/10"
                                         >
                                             <td className="p-4 font-medium">
-                                                {item.name}
+                                                <Link
+                                                    href={getCategoryTransactionsUrl(item.id)}
+                                                    className="text-primary hover:underline"
+                                                >
+                                                    {item.name}
+                                                </Link>
                                             </td>
                                             <td className="p-4">
                                                 {item.credit > 0 ? (

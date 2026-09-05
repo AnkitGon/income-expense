@@ -23,6 +23,9 @@ type Props = {
     categories: Category[];
     filters: {
         search?: string;
+        category_id?: string | number;
+        from_date?: string;
+        to_date?: string;
     };
 };
 
@@ -35,6 +38,11 @@ export default function TransactionsIndex({
     const currentTeam = page.props.currentTeam as Team;
 
     const [search, setSearch] = useState(filters.search || '');
+    const [categoryId, setCategoryId] = useState(
+        filters.category_id != null ? String(filters.category_id) : '',
+    );
+    const [fromDate, setFromDate] = useState(filters.from_date || '');
+    const [toDate, setToDate] = useState(filters.to_date || '');
     const [modalOpen, setModalOpen] = useState(false);
     const [editingTransaction, setEditingTransaction] =
         useState<Transaction | null>(null);
@@ -42,27 +50,96 @@ export default function TransactionsIndex({
     const [transactionToDelete, setTransactionToDelete] =
         useState<Transaction | null>(null);
 
-    // Synchronize filters search with local state
     useEffect(() => {
         setSearch(filters.search || '');
-    }, [filters.search]);
+        setCategoryId(
+            filters.category_id != null ? String(filters.category_id) : '',
+        );
+        setFromDate(filters.from_date || '');
+        setToDate(filters.to_date || '');
+    }, [filters.search, filters.category_id, filters.from_date, filters.to_date]);
+
+    const applyFilters = (overrides: {
+        search?: string;
+        category_id?: string;
+        from_date?: string;
+        to_date?: string;
+    } = {}) => {
+        const next = {
+            search,
+            category_id: categoryId,
+            from_date: fromDate,
+            to_date: toDate,
+            ...overrides,
+        };
+
+        const params: Record<string, string> = {};
+
+        if (next.search) {
+            params.search = next.search;
+        }
+
+        if (next.category_id) {
+            params.category_id = next.category_id;
+        }
+
+        if (next.from_date) {
+            params.from_date = next.from_date;
+        }
+
+        if (next.to_date) {
+            params.to_date = next.to_date;
+        }
+
+        router.get(index(currentTeam.slug).url, params, {
+            preserveState: true,
+            replace: true,
+        });
+    };
 
     const handleSearchSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        router.get(
-            index(currentTeam.slug).url,
-            { search },
-            { preserveState: true, replace: true },
-        );
+        applyFilters({ search });
     };
 
     const handleClearSearch = () => {
         setSearch('');
-        router.get(
-            index(currentTeam.slug).url,
-            { search: '' },
-            { preserveState: true, replace: true },
-        );
+        applyFilters({ search: '' });
+    };
+
+    const handleCategoryChange = (
+        e: React.ChangeEvent<HTMLSelectElement>,
+    ) => {
+        const value = e.target.value;
+        setCategoryId(value);
+        applyFilters({ category_id: value });
+    };
+
+    const handleFromDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const value = e.target.value;
+        setFromDate(value);
+        applyFilters({ from_date: value });
+    };
+
+    const handleToDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const value = e.target.value;
+        setToDate(value);
+        applyFilters({ to_date: value });
+    };
+
+    const hasActiveFilters = !!(
+        filters.search ||
+        filters.category_id ||
+        filters.from_date ||
+        filters.to_date
+    );
+
+    const handleClearFilters = () => {
+        setSearch('');
+        setCategoryId('');
+        setFromDate('');
+        setToDate('');
+        router.get(index(currentTeam.slug).url);
     };
 
     const openCreateModal = () => {
@@ -132,33 +209,127 @@ export default function TransactionsIndex({
                     </Button>
                 </div>
 
-                {/* Filters / Search Bar */}
-                <div className="flex items-center gap-2">
+                {/* Filters */}
+                <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-end">
                     <form
                         onSubmit={handleSearchSubmit}
-                        className="relative flex max-w-sm flex-1 items-center"
+                        className="flex flex-1 items-end gap-2"
                     >
-                        <Search className="absolute left-3 h-4 w-4 text-muted-foreground" />
-                        <Input
-                            placeholder="Search description or category..."
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                            className="pr-8 pl-9"
-                        />
-                        {search && (
-                            <button
-                                type="button"
-                                onClick={handleClearSearch}
-                                className="absolute right-3 text-muted-foreground hover:text-foreground"
-                            >
-                                <X className="h-4 w-4" />
-                            </button>
-                        )}
+                        <div className="relative max-w-sm flex-1">
+                            <Label htmlFor="search" className="sr-only">
+                                Search
+                            </Label>
+                            <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                            <Input
+                                id="search"
+                                placeholder="Search description or category..."
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                                className="pr-8 pl-9"
+                            />
+                            {search && (
+                                <button
+                                    type="button"
+                                    onClick={handleClearSearch}
+                                    className="absolute top-1/2 right-3 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                                >
+                                    <X className="h-4 w-4" />
+                                </button>
+                            )}
+                        </div>
+                        <Button type="submit" variant="secondary">
+                            Search
+                        </Button>
                     </form>
-                    <Button onClick={handleSearchSubmit} variant="secondary">
-                        Search
-                    </Button>
+
+                    <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+                        <div className="grid gap-1.5">
+                            <Label
+                                htmlFor="filter-category"
+                                className="text-xs text-muted-foreground"
+                            >
+                                Category
+                            </Label>
+                            <select
+                                id="filter-category"
+                                value={categoryId}
+                                onChange={handleCategoryChange}
+                                className="flex h-9 w-full min-w-44 rounded-md border border-input border-neutral-200 bg-transparent px-3 py-1 text-sm shadow-xs transition-colors focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-hidden dark:border-neutral-800 dark:bg-neutral-900"
+                            >
+                                <option value="">All categories</option>
+                                <option value="uncategorized">
+                                    Uncategorized
+                                </option>
+                                {categories.map((c) => (
+                                    <option key={c.id} value={c.id}>
+                                        {c.name}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div className="grid gap-1.5">
+                            <Label
+                                htmlFor="filter-from-date"
+                                className="text-xs text-muted-foreground"
+                            >
+                                From
+                            </Label>
+                            <Input
+                                id="filter-from-date"
+                                type="date"
+                                value={fromDate}
+                                onChange={handleFromDateChange}
+                                className="w-36"
+                            />
+                        </div>
+
+                        <div className="grid gap-1.5">
+                            <Label
+                                htmlFor="filter-to-date"
+                                className="text-xs text-muted-foreground"
+                            >
+                                To
+                            </Label>
+                            <Input
+                                id="filter-to-date"
+                                type="date"
+                                value={toDate}
+                                onChange={handleToDateChange}
+                                className="w-36"
+                            />
+                        </div>
+                    </div>
                 </div>
+
+                {hasActiveFilters && (
+                    <div className="flex flex-wrap gap-2 items-center bg-muted/20 p-2.5 rounded-lg border">
+                        <span className="text-xs font-medium text-muted-foreground">Active filters:</span>
+                        {filters.search && (
+                            <span className="inline-flex items-center rounded-full bg-neutral-100 px-2 py-0.5 text-xs font-medium text-neutral-800 dark:bg-neutral-800 dark:text-neutral-200">
+                                Search: {filters.search}
+                            </span>
+                        )}
+                        {filters.category_id && (
+                            <span className="inline-flex items-center rounded-full bg-neutral-100 px-2 py-0.5 text-xs font-medium text-neutral-800 dark:bg-neutral-800 dark:text-neutral-200">
+                                Category: {filters.category_id === 'uncategorized' ? 'Uncategorized' : (categories.find(c => c.id == filters.category_id)?.name || 'Unknown')}
+                            </span>
+                        )}
+                        {filters.from_date && (
+                            <span className="inline-flex items-center rounded-full bg-neutral-100 px-2 py-0.5 text-xs font-medium text-neutral-800 dark:bg-neutral-800 dark:text-neutral-200">
+                                From: {formatDate(filters.from_date)}
+                            </span>
+                        )}
+                        {filters.to_date && (
+                            <span className="inline-flex items-center rounded-full bg-neutral-100 px-2 py-0.5 text-xs font-medium text-neutral-800 dark:bg-neutral-800 dark:text-neutral-200">
+                                To: {formatDate(filters.to_date)}
+                            </span>
+                        )}
+                        <Button variant="ghost" size="sm" onClick={handleClearFilters} className="h-7 px-2 text-xs text-rose-600 hover:bg-rose-50 hover:text-rose-700 dark:text-rose-400 dark:hover:bg-rose-950/20">
+                            <X className="mr-1 h-3 w-3" /> Clear all
+                        </Button>
+                    </div>
+                )}
 
                 {/* Listing Section */}
                 <div className="overflow-hidden rounded-xl border border-sidebar-border/70 bg-card text-card-foreground dark:border-sidebar-border">
@@ -263,8 +434,9 @@ export default function TransactionsIndex({
                                             colSpan={6}
                                             className="p-8 text-center text-muted-foreground"
                                         >
-                                            No transactions recorded yet. Click
-                                            "New Transaction" to add one.
+                                            {hasActiveFilters
+                                                ? 'No transactions match your filters.'
+                                                : 'No transactions recorded yet. Click "New Transaction" to add one.'}
                                         </td>
                                     </tr>
                                 )}

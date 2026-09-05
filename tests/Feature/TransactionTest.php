@@ -81,6 +81,143 @@ test('transactions page can be searched', function () {
     );
 });
 
+test('transactions page can be filtered by category', function () {
+    $user = User::factory()->create();
+    $team = $user->currentTeam;
+
+    $food = Category::factory()->create([
+        'team_id' => $team->id,
+        'name' => 'Food',
+    ]);
+    $rent = Category::factory()->create([
+        'team_id' => $team->id,
+        'name' => 'Rent',
+    ]);
+
+    Transaction::factory()->create([
+        'team_id' => $team->id,
+        'category_id' => $food->id,
+        'description' => 'Groceries',
+    ]);
+
+    Transaction::factory()->create([
+        'team_id' => $team->id,
+        'category_id' => $rent->id,
+        'description' => 'Monthly rent',
+    ]);
+
+    Transaction::factory()->create([
+        'team_id' => $team->id,
+        'category_id' => null,
+        'description' => 'Uncategorized purchase',
+    ]);
+
+    $response = $this
+        ->actingAs($user)
+        ->get(route('transactions.index', [
+            'current_team' => $team->slug,
+            'category_id' => $food->id,
+        ]));
+
+    $response->assertOk();
+    $response->assertInertia(fn (Assert $page) => $page
+        ->component('transactions/index')
+        ->has('transactions.data', 1)
+        ->where('transactions.data.0.description', 'Groceries')
+        ->where('filters.category_id', (string) $food->id)
+    );
+
+    $uncategorized = $this
+        ->actingAs($user)
+        ->get(route('transactions.index', [
+            'current_team' => $team->slug,
+            'category_id' => 'uncategorized',
+        ]));
+
+    $uncategorized->assertOk();
+    $uncategorized->assertInertia(fn (Assert $page) => $page
+        ->component('transactions/index')
+        ->has('transactions.data', 1)
+        ->where('transactions.data.0.description', 'Uncategorized purchase')
+    );
+});
+
+test('transactions page can be filtered by date range', function () {
+    $user = User::factory()->create();
+    $team = $user->currentTeam;
+
+    Transaction::factory()->create([
+        'team_id' => $team->id,
+        'date' => '2026-01-10',
+        'description' => 'January expense',
+    ]);
+
+    Transaction::factory()->create([
+        'team_id' => $team->id,
+        'date' => '2026-02-15',
+        'description' => 'February expense',
+    ]);
+
+    Transaction::factory()->create([
+        'team_id' => $team->id,
+        'date' => '2026-03-20',
+        'description' => 'March expense',
+    ]);
+
+    $response = $this
+        ->actingAs($user)
+        ->get(route('transactions.index', [
+            'current_team' => $team->slug,
+            'from_date' => '2026-02-01',
+            'to_date' => '2026-02-28',
+        ]));
+
+    $response->assertOk();
+    $response->assertInertia(fn (Assert $page) => $page
+        ->component('transactions/index')
+        ->has('transactions.data', 1)
+        ->where('transactions.data.0.description', 'February expense')
+        ->where('filters.from_date', '2026-02-01')
+        ->where('filters.to_date', '2026-02-28')
+    );
+});
+
+test('filtering transactions does not delete database records', function () {
+    $user = User::factory()->create();
+    $team = $user->currentTeam;
+    $category = Category::factory()->create(['team_id' => $team->id]);
+
+    Transaction::factory()->create([
+        'team_id' => $team->id,
+        'category_id' => $category->id,
+        'date' => '2026-01-05',
+        'description' => 'Kept record',
+    ]);
+
+    Transaction::factory()->create([
+        'team_id' => $team->id,
+        'category_id' => null,
+        'date' => '2026-03-05',
+        'description' => 'Also kept',
+    ]);
+
+    $this
+        ->actingAs($user)
+        ->get(route('transactions.index', [
+            'current_team' => $team->slug,
+            'category_id' => $category->id,
+            'from_date' => '2026-01-01',
+            'to_date' => '2026-01-31',
+        ]))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('transactions.data', 1)
+            ->where('transactions.data.0.description', 'Kept record')
+        );
+
+    expect(Transaction::query()->where('team_id', $team->id)->count())->toBe(2);
+});
+
 test('user can create a transaction', function () {
     $user = User::factory()->create();
     $team = $user->currentTeam;

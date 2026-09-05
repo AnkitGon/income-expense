@@ -33,13 +33,34 @@ class DashboardController extends Controller
                 ],
             ]);
 
-        $selectedMonth = $request->input('month', Carbon::now()->format('Y-m'));
-        if (! preg_match('/^\d{4}-\d{2}$/', $selectedMonth)) {
-            $selectedMonth = Carbon::now()->format('Y-m');
+        $selectedMonth = $request->input('month');
+        $fromDate = $request->input('from_date');
+        $toDate = $request->input('to_date');
+
+        $isValidRange = false;
+        if ($fromDate && $toDate) {
+            try {
+                $start = Carbon::parse($fromDate);
+                $end = Carbon::parse($toDate);
+                if ($start->lte($end)) {
+                    $startDate = $start->toDateString();
+                    $endDate = $end->toDateString();
+                    $isValidRange = true;
+                }
+            } catch (\Exception $e) {
+                // Ignore and fall back to month
+            }
         }
 
-        $startDate = Carbon::parse($selectedMonth.'-01')->startOfMonth()->toDateString();
-        $endDate = Carbon::parse($selectedMonth.'-01')->endOfMonth()->toDateString();
+        if (! $isValidRange) {
+            if (! $selectedMonth || ! preg_match('/^\d{4}-\d{2}$/', $selectedMonth)) {
+                $selectedMonth = Carbon::now()->format('Y-m');
+            }
+            $startDate = Carbon::parse($selectedMonth.'-01')->startOfMonth()->toDateString();
+            $endDate = Carbon::parse($selectedMonth.'-01')->endOfMonth()->toDateString();
+        } else {
+            $selectedMonth = '';
+        }
 
         $categories = $current_team->categories()
             ->get()
@@ -92,10 +113,20 @@ class DashboardController extends Controller
             ]);
         }
 
+        $sortedCategories = $categories->sortBy(function ($item) {
+            $isCredit = $item['credit'] > 0;
+            $group = $isCredit ? 0 : 1;
+            $subSort = $isCredit ? -$item['credit'] : -$item['debit'];
+
+            return [$group, $subSort];
+        })->values();
+
         return Inertia::render('dashboard', [
             'pendingInvitations' => $pendingInvitations,
-            'summary' => $categories,
+            'summary' => $sortedCategories,
             'selectedMonth' => $selectedMonth,
+            'startDate' => $startDate,
+            'endDate' => $endDate,
         ]);
     }
 }
