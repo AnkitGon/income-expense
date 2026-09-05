@@ -13,6 +13,8 @@ use Illuminate\Support\Carbon;
  * @property int $id
  * @property int $team_id
  * @property int|null $category_id
+ * @property int $bank_account_id
+ * @property int|null $transfer_pair_id
  * @property Carbon $date
  * @property string $type
  * @property float $amount
@@ -21,8 +23,10 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $updated_at
  * @property-read Team $team
  * @property-read Category|null $category
+ * @property-read BankAccount $bankAccount
+ * @property-read Transaction|null $transferPair
  */
-#[Fillable(['team_id', 'category_id', 'date', 'type', 'amount', 'description'])]
+#[Fillable(['team_id', 'category_id', 'bank_account_id', 'transfer_pair_id', 'date', 'type', 'amount', 'description'])]
 class Transaction extends Model
 {
     /** @use HasFactory<TransactionFactory> */
@@ -59,5 +63,25 @@ class Transaction extends Model
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);
+    }
+
+    /**
+     * Get the bank account associated with the transaction.
+     *
+     * @return BelongsTo<BankAccount, $this>
+     */
+    public function bankAccount(): BelongsTo
+    {
+        return $this->belongsTo(BankAccount::class);
+    }
+
+    /**
+     * Get the paired transfer transaction if this is a transfer.
+     *
+     * @return BelongsTo<Transaction, $this>
+     */
+    public function transferPair(): BelongsTo
+    {
+        return $this->belongsTo(Transaction::class, 'transfer_pair_id');
     }
 }

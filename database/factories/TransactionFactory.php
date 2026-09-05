@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Models\BankAccount;
 use App\Models\Category;
 use App\Models\Team;
 use App\Models\Transaction;
@@ -22,6 +23,7 @@ class TransactionFactory extends Factory
         return [
             'team_id' => Team::factory(),
             'category_id' => Category::factory(),
+            'bank_account_id' => fn (array $attributes) => BankAccount::factory(['team_id' => $attributes['team_id']]),
             'date' => $this->faker->date(),
             'type' => $this->faker->randomElement(['credit', 'debit']),
             'amount' => $this->faker->randomFloat(2, 5, 500),

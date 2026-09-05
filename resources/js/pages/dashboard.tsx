@@ -1,10 +1,11 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
+import { Landmark } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import PendingInvitationsModal from '@/components/pending-invitations-modal';
 import Heading from '@/components/heading';
 import { dashboard } from '@/routes';
 import { index as transactionsIndex } from '@/routes/transactions';
-import type { DashboardInvitation, Team } from '@/types';
+import type { BankAccount, DashboardInvitation, Team } from '@/types';
 
 type CategorySummary = {
     id: number | null;
@@ -14,9 +15,26 @@ type CategorySummary = {
     total: number;
 };
 
+type AccountSummary = {
+    id: number;
+    name: string;
+    bank_name: string;
+    account_number: string | null;
+    credit: number;
+    debit: number;
+    income?: number;
+    expenses?: number;
+    transfers_in?: number;
+    transfers_out?: number;
+    balance: number;
+};
+
 type Props = {
     pendingInvitations?: DashboardInvitation[];
     summary: CategorySummary[];
+    bankAccounts?: BankAccount[];
+    accountSummaries?: AccountSummary[];
+    selectedBankAccountId?: number | null;
     selectedMonth: string;
     startDate: string;
     endDate: string;
@@ -25,6 +43,9 @@ type Props = {
 export default function Dashboard({
     pendingInvitations = [],
     summary = [],
+    bankAccounts = [],
+    accountSummaries = [],
+    selectedBankAccountId = null,
     selectedMonth,
     startDate,
     endDate,
@@ -38,11 +59,15 @@ export default function Dashboard({
 
     const [fromDate, setFromDate] = useState(startDate);
     const [toDate, setToDate] = useState(endDate);
+    const [bankAccountId, setBankAccountId] = useState<string>(
+        selectedBankAccountId ? String(selectedBankAccountId) : '',
+    );
 
     useEffect(() => {
         setFromDate(startDate);
         setToDate(endDate);
-    }, [startDate, endDate]);
+        setBankAccountId(selectedBankAccountId ? String(selectedBankAccountId) : '');
+    }, [startDate, endDate, selectedBankAccountId]);
 
     const getCategoryTransactionsUrl = (categoryId: number | null) => {
         const url = new URL(transactionsIndex(currentTeam.slug).url, window.location.origin);
@@ -50,6 +75,9 @@ export default function Dashboard({
             url.searchParams.set('category_id', 'uncategorized');
         } else {
             url.searchParams.set('category_id', String(categoryId));
+        }
+        if (bankAccountId) {
+            url.searchParams.set('bank_account_id', bankAccountId);
         }
         if (fromDate) {
             url.searchParams.set('from_date', fromDate);
@@ -62,9 +90,11 @@ export default function Dashboard({
 
     const handleMonthChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const month = e.target.value;
+        const params: Record<string, string> = { month };
+        if (bankAccountId) params.bank_account_id = bankAccountId;
         router.get(
             dashboard(currentTeam.slug).url,
-            { month },
+            params,
             { preserveState: true },
         );
     };
@@ -73,9 +103,11 @@ export default function Dashboard({
         const value = e.target.value;
         setFromDate(value);
         if (value && toDate && value <= toDate) {
+            const params: Record<string, string> = { from_date: value, to_date: toDate };
+            if (bankAccountId) params.bank_account_id = bankAccountId;
             router.get(
                 dashboard(currentTeam.slug).url,
-                { from_date: value, to_date: toDate },
+                params,
                 { preserveState: true },
             );
         }
@@ -85,12 +117,31 @@ export default function Dashboard({
         const value = e.target.value;
         setToDate(value);
         if (fromDate && value && fromDate <= value) {
+            const params: Record<string, string> = { from_date: fromDate, to_date: value };
+            if (bankAccountId) params.bank_account_id = bankAccountId;
             router.get(
                 dashboard(currentTeam.slug).url,
-                { from_date: fromDate, to_date: value },
+                params,
                 { preserveState: true },
             );
         }
+    };
+
+    const handleBankAccountChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const value = e.target.value;
+        setBankAccountId(value);
+        const params: Record<string, string> = {};
+        if (value) params.bank_account_id = value;
+        if (selectedMonth) params.month = selectedMonth;
+        else if (fromDate && toDate) {
+            params.from_date = fromDate;
+            params.to_date = toDate;
+        }
+        router.get(
+            dashboard(currentTeam.slug).url,
+            params,
+            { preserveState: true },
+        );
     };
 
     // Calculate Column Totals
@@ -106,6 +157,10 @@ export default function Dashboard({
         }).format(amount);
     };
 
+    const selectedAccountName = bankAccountId
+        ? bankAccounts.find((b) => String(b.id) === bankAccountId)?.name
+        : 'All Bank Accounts';
+
     return (
         <>
             <Head title="Dashboard" />
@@ -116,14 +171,36 @@ export default function Dashboard({
             />
 
             <div className="flex flex-col space-y-6 p-6">
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                     <Heading
-                        title="Dashboard"
-                        description="Overview of your team's income and expenses."
+                        title="Dashboard & Reports"
+                        description={`Financial overview for ${selectedAccountName}.`}
                     />
 
-                    {/* Date Filters */}
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                    {/* Filters */}
+                    <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+                        <div className="flex items-center gap-2">
+                            <label
+                                htmlFor="bank-account-select"
+                                className="text-sm font-medium whitespace-nowrap text-muted-foreground"
+                            >
+                                Bank:
+                            </label>
+                            <select
+                                id="bank-account-select"
+                                value={bankAccountId}
+                                onChange={handleBankAccountChange}
+                                className="flex h-9 w-48 rounded-md border border-input border-neutral-200 bg-transparent px-3 py-1 text-sm font-medium text-foreground shadow-xs transition-colors focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-hidden dark:border-neutral-800 dark:bg-neutral-900"
+                            >
+                                <option value="">All Bank Accounts</option>
+                                {bankAccounts.map((b) => (
+                                    <option key={b.id} value={b.id}>
+                                        {b.name} ({b.bank_name})
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+
                         <div className="flex items-center gap-2">
                             <label
                                 htmlFor="month-select"
@@ -136,7 +213,7 @@ export default function Dashboard({
                                 id="month-select"
                                 value={selectedMonth || ''}
                                 onChange={handleMonthChange}
-                                className="flex h-9 w-44 rounded-md border border-input border-neutral-200 bg-transparent px-3 py-1 text-sm text-foreground shadow-xs transition-colors focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-hidden dark:border-neutral-800 dark:bg-neutral-900"
+                                className="flex h-9 w-40 rounded-md border border-input border-neutral-200 bg-transparent px-3 py-1 text-sm text-foreground shadow-xs transition-colors focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-hidden dark:border-neutral-800 dark:bg-neutral-900"
                             />
                         </div>
 
@@ -176,16 +253,102 @@ export default function Dashboard({
                     </div>
                 </div>
 
+                {/* Bank Account Breakdown Grid */}
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    {accountSummaries.map((acc) => {
+                        const isSelected = String(acc.id) === bankAccountId;
+                        return (
+                            <div
+                                key={acc.id}
+                                onClick={() => {
+                                    const nextId = isSelected ? '' : String(acc.id);
+                                    setBankAccountId(nextId);
+                                    const params: Record<string, string> = {};
+                                    if (nextId) params.bank_account_id = nextId;
+                                    if (selectedMonth) params.month = selectedMonth;
+                                    else if (fromDate && toDate) {
+                                        params.from_date = fromDate;
+                                        params.to_date = toDate;
+                                    }
+                                    router.get(dashboard(currentTeam.slug).url, params, { preserveState: true });
+                                }}
+                                className={`cursor-pointer rounded-xl border p-4 transition-all shadow-xs ${
+                                    isSelected
+                                        ? 'border-primary bg-primary/5 ring-2 ring-primary/20 dark:bg-primary/10'
+                                        : 'border-sidebar-border/70 bg-card hover:bg-muted/30 dark:border-sidebar-border'
+                                }`}
+                            >
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2.5">
+                                        <div className={`flex h-9 w-9 items-center justify-center rounded-lg ${isSelected ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
+                                            <Landmark className="h-4 w-4" />
+                                        </div>
+                                        <div>
+                                            <h4 className="font-semibold text-sm text-foreground">{acc.name}</h4>
+                                            <p className="text-xs text-muted-foreground">{acc.bank_name} {acc.account_number ? `(${acc.account_number})` : ''}</p>
+                                        </div>
+                                    </div>
+                                    {isSelected && (
+                                        <span className="rounded-full bg-primary/20 px-2 py-0.5 text-[10px] font-bold text-primary">Active Filter</span>
+                                    )}
+                                </div>
+
+                                <div className="mt-4 grid grid-cols-3 gap-2 border-t pt-3 text-xs">
+                                    <div>
+                                        <span className="text-muted-foreground block text-[11px]">Total Inflow</span>
+                                        <span className="font-semibold text-emerald-600 dark:text-emerald-400">{formatAmount(acc.credit)}</span>
+                                        {acc.transfers_in ? (
+                                            <span className="text-[10px] text-muted-foreground block">+ {formatAmount(acc.transfers_in)} txfer</span>
+                                        ) : null}
+                                    </div>
+                                    <div>
+                                        <span className="text-muted-foreground block text-[11px]">Total Outflow</span>
+                                        <span className="font-semibold text-rose-600 dark:text-rose-400">{formatAmount(acc.debit)}</span>
+                                        {acc.transfers_out ? (
+                                            <span className="text-[10px] text-amber-600 dark:text-amber-400 block">- {formatAmount(acc.transfers_out)} txfer</span>
+                                        ) : null}
+                                    </div>
+                                    <div className="text-right">
+                                        <span className="text-muted-foreground block text-[11px]">Net Balance</span>
+                                        <span className={`font-bold ${acc.balance >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                                            {acc.balance > 0 ? '+' : ''}{formatAmount(acc.balance)}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+
                 {/* Category Summary Card */}
                 <div className="grid grid-cols-12 gap-4">
-                    <div className="overflow-hidden rounded-xl border border-sidebar-border/70 bg-card text-card-foreground dark:border-sidebar-border col-span-12 lg:col-span-6">
-                        <div className="border-b border-sidebar-border/70 bg-muted/20 p-4">
-                            <h3 className="text-base font-semibold">
-                                Category Summary
-                            </h3>
-                            <p className="text-xs text-muted-foreground">
-                                Detailed summary of credits and debits by category.
-                            </p>
+                    <div className="overflow-hidden rounded-xl border border-sidebar-border/70 bg-card text-card-foreground dark:border-sidebar-border col-span-12">
+                        <div className="border-b border-sidebar-border/70 bg-muted/20 p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                            <div>
+                                <h3 className="text-base font-semibold">
+                                    Category Summary ({selectedAccountName})
+                                </h3>
+                                <p className="text-xs text-muted-foreground">
+                                    Detailed breakdown of credits and debits grouped by category.
+                                </p>
+                            </div>
+                            {bankAccountId && (
+                                <button
+                                    onClick={() => {
+                                        setBankAccountId('');
+                                        const params: Record<string, string> = {};
+                                        if (selectedMonth) params.month = selectedMonth;
+                                        else if (fromDate && toDate) {
+                                            params.from_date = fromDate;
+                                            params.to_date = toDate;
+                                        }
+                                        router.get(dashboard(currentTeam.slug).url, params, { preserveState: true });
+                                    }}
+                                    className="text-xs text-primary underline font-medium self-start sm:self-auto"
+                                >
+                                    Show All Bank Accounts Combined
+                                </button>
+                            )}
                         </div>
 
                         <div className="overflow-x-auto">
@@ -256,8 +419,7 @@ export default function Dashboard({
                                                 colSpan={4}
                                                 className="p-8 text-center text-muted-foreground"
                                             >
-                                                No transaction data recorded for
-                                                this month.
+                                                No transaction data recorded for this period.
                                             </td>
                                         </tr>
                                     )}

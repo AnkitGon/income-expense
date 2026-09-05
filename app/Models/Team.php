@@ -26,7 +26,9 @@ use Illuminate\Support\Carbon;
  * @property-read Collection<int, Membership> $memberships
  * @property-read Collection<int, User> $members
  * @property-read Collection<int, Category> $categories
+ * @property-read Collection<int, BankAccount> $bankAccounts
  * @property-read Collection<int, Transaction> $transactions
+ * @property-read Collection<int, Goal> $goals
  */
 #[Fillable(['name', 'slug', 'is_personal'])]
 class Team extends Model
@@ -108,6 +110,16 @@ class Team extends Model
     }
 
     /**
+     * Get all bank accounts for this team.
+     *
+     * @return HasMany<BankAccount, $this>
+     */
+    public function bankAccounts(): HasMany
+    {
+        return $this->hasMany(BankAccount::class);
+    }
+
+    /**
      * Get all transactions for this team.
      *
      * @return HasMany<Transaction, $this>
@@ -115,6 +127,16 @@ class Team extends Model
     public function transactions(): HasMany
     {
         return $this->hasMany(Transaction::class);
+    }
+
+    /**
+     * Get all goals for this team.
+     *
+     * @return HasMany<Goal, $this>
+     */
+    public function goals(): HasMany
+    {
+        return $this->hasMany(Goal::class);
     }
 
     /**

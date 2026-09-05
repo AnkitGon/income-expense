@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\TeamRole;
+use App\Models\BankAccount;
 use App\Models\Category;
 use App\Models\Team;
 use App\Models\TeamInvitation;
@@ -267,5 +268,48 @@ test('dashboard shows transaction summary by category for custom date range', fu
         ->where('summary.1.debit', 30)
         ->where('startDate', '2026-08-10')
         ->where('endDate', '2026-08-15')
+    );
+});
+
+test('dashboard filters transaction summary by selected bank account', function () {
+    $user = User::factory()->create();
+    $team = $user->currentTeam;
+
+    $account1 = BankAccount::factory()->create(['team_id' => $team->id, 'name' => 'Account 1']);
+    $account2 = BankAccount::factory()->create(['team_id' => $team->id, 'name' => 'Account 2']);
+
+    $category = Category::factory()->create(['team_id' => $team->id, 'name' => 'General']);
+
+    Transaction::factory()->create([
+        'team_id' => $team->id,
+        'bank_account_id' => $account1->id,
+        'category_id' => $category->id,
+        'type' => 'credit',
+        'amount' => 200.00,
+        'date' => Carbon::now()->startOfMonth()->toDateString(),
+    ]);
+
+    Transaction::factory()->create([
+        'team_id' => $team->id,
+        'bank_account_id' => $account2->id,
+        'category_id' => $category->id,
+        'type' => 'credit',
+        'amount' => 500.00,
+        'date' => Carbon::now()->startOfMonth()->toDateString(),
+    ]);
+
+    $response = $this
+        ->actingAs($user)
+        ->get(route('dashboard', [
+            'current_team' => $team->slug,
+            'bank_account_id' => $account1->id,
+        ]));
+
+    $response->assertOk();
+    $response->assertInertia(fn (Assert $page) => $page
+        ->component('dashboard')
+        ->where('selectedBankAccountId', $account1->id)
+        ->has('summary', 1)
+        ->where('summary.0.credit', 200)
     );
 });

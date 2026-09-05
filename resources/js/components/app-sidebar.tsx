@@ -3,8 +3,10 @@ import {
     BookOpen,
     DollarSign,
     FolderGit2,
+    Landmark,
     LayoutGrid,
     Tags,
+    Target,
 } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { NavFooter } from '@/components/nav-footer';
@@ -21,7 +23,9 @@ import {
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { dashboard } from '@/routes';
+import { index as bankAccountsIndex } from '@/routes/bank-accounts';
 import { index as categoriesIndex } from '@/routes/categories';
+import { index as goalsIndex } from '@/routes/goals';
 import { index as transactionsIndex } from '@/routes/transactions';
 import type { NavItem } from '@/types';
 
@@ -31,8 +35,16 @@ export function AppSidebar() {
         ? dashboard(page.props.currentTeam.slug)
         : '/';
 
+    const bankAccountsUrl = page.props.currentTeam
+        ? bankAccountsIndex(page.props.currentTeam.slug)
+        : '#';
+
     const categoriesUrl = page.props.currentTeam
         ? categoriesIndex(page.props.currentTeam.slug)
+        : '#';
+
+    const goalsUrl = page.props.currentTeam
+        ? goalsIndex(page.props.currentTeam.slug)
         : '#';
 
     const transactionsUrl = page.props.currentTeam
@@ -44,6 +56,16 @@ export function AppSidebar() {
             title: 'Dashboard',
             href: dashboardUrl,
             icon: LayoutGrid,
+        },
+        {
+            title: 'Goals',
+            href: goalsUrl,
+            icon: Target,
+        },
+        {
+            title: 'Bank Accounts',
+            href: bankAccountsUrl,
+            icon: Landmark,
         },
         {
             title: 'Categories',

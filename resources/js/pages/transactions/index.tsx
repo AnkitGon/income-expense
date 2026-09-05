@@ -1,5 +1,5 @@
 import { Form, Head, Link, usePage, router } from '@inertiajs/react';
-import { Pencil, Plus, Search, Trash2, X } from 'lucide-react';
+import { ArrowLeftRight, Landmark, Pencil, Plus, Search, Trash2, X } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
@@ -15,15 +15,19 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { index as bankAccountsIndex } from '@/routes/bank-accounts';
 import { index, store, update, destroy } from '@/routes/transactions';
-import type { Category, PaginatedData, Team, Transaction } from '@/types';
+import { store as transferStore } from '@/routes/transfers';
+import type { BankAccount, Category, PaginatedData, Team, Transaction } from '@/types';
 
 type Props = {
     transactions: PaginatedData<Transaction>;
     categories: Category[];
+    bankAccounts: BankAccount[];
     filters: {
         search?: string;
         category_id?: string | number;
+        bank_account_id?: string | number;
         from_date?: string;
         to_date?: string;
     };
@@ -32,6 +36,7 @@ type Props = {
 export default function TransactionsIndex({
     transactions,
     categories,
+    bankAccounts,
     filters,
 }: Props) {
     const page = usePage();
@@ -41,33 +46,52 @@ export default function TransactionsIndex({
     const [categoryId, setCategoryId] = useState(
         filters.category_id != null ? String(filters.category_id) : '',
     );
+    const [bankAccountId, setBankAccountId] = useState(
+        filters.bank_account_id != null ? String(filters.bank_account_id) : '',
+    );
     const [fromDate, setFromDate] = useState(filters.from_date || '');
     const [toDate, setToDate] = useState(filters.to_date || '');
     const [modalOpen, setModalOpen] = useState(false);
+    const [transferModalOpen, setTransferModalOpen] = useState(false);
     const [editingTransaction, setEditingTransaction] =
         useState<Transaction | null>(null);
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [transactionToDelete, setTransactionToDelete] =
         useState<Transaction | null>(null);
 
+    const [fromBankId, setFromBankId] = useState<string>(bankAccounts[0]?.id ? String(bankAccounts[0].id) : '');
+    const [toBankId, setToBankId] = useState<string>(bankAccounts[1]?.id ? String(bankAccounts[1].id) : '');
+
     useEffect(() => {
         setSearch(filters.search || '');
         setCategoryId(
             filters.category_id != null ? String(filters.category_id) : '',
         );
+        setBankAccountId(
+            filters.bank_account_id != null ? String(filters.bank_account_id) : '',
+        );
         setFromDate(filters.from_date || '');
         setToDate(filters.to_date || '');
-    }, [filters.search, filters.category_id, filters.from_date, filters.to_date]);
+    }, [filters.search, filters.category_id, filters.bank_account_id, filters.from_date, filters.to_date]);
+
+    useEffect(() => {
+        if (bankAccounts.length >= 2 && !fromBankId && !toBankId) {
+            setFromBankId(String(bankAccounts[0].id));
+            setToBankId(String(bankAccounts[1].id));
+        }
+    }, [bankAccounts]);
 
     const applyFilters = (overrides: {
         search?: string;
         category_id?: string;
+        bank_account_id?: string;
         from_date?: string;
         to_date?: string;
     } = {}) => {
         const next = {
             search,
             category_id: categoryId,
+            bank_account_id: bankAccountId,
             from_date: fromDate,
             to_date: toDate,
             ...overrides,
@@ -81,6 +105,10 @@ export default function TransactionsIndex({
 
         if (next.category_id) {
             params.category_id = next.category_id;
+        }
+
+        if (next.bank_account_id) {
+            params.bank_account_id = next.bank_account_id;
         }
 
         if (next.from_date) {
@@ -115,6 +143,14 @@ export default function TransactionsIndex({
         applyFilters({ category_id: value });
     };
 
+    const handleBankAccountChange = (
+        e: React.ChangeEvent<HTMLSelectElement>,
+    ) => {
+        const value = e.target.value;
+        setBankAccountId(value);
+        applyFilters({ bank_account_id: value });
+    };
+
     const handleFromDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = e.target.value;
         setFromDate(value);
@@ -130,6 +166,7 @@ export default function TransactionsIndex({
     const hasActiveFilters = !!(
         filters.search ||
         filters.category_id ||
+        filters.bank_account_id ||
         filters.from_date ||
         filters.to_date
     );
@@ -137,6 +174,7 @@ export default function TransactionsIndex({
     const handleClearFilters = () => {
         setSearch('');
         setCategoryId('');
+        setBankAccountId('');
         setFromDate('');
         setToDate('');
         router.get(index(currentTeam.slug).url);
@@ -173,7 +211,6 @@ export default function TransactionsIndex({
         );
     };
 
-    // Format transaction date for displaying
     const formatDate = (dateStr: string) => {
         return new Date(dateStr).toLocaleDateString(undefined, {
             year: 'numeric',
@@ -182,7 +219,6 @@ export default function TransactionsIndex({
         });
     };
 
-    // Format amount as currency
     const formatAmount = (amount: number) => {
         return new Intl.NumberFormat(undefined, {
             style: 'currency',
@@ -198,15 +234,26 @@ export default function TransactionsIndex({
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <Heading
                         title="Transactions"
-                        description="Track income and expenses for your team."
+                        description="Track income, expenses, and internal bank transfers."
                     />
 
-                    <Button
-                        onClick={openCreateModal}
-                        className="w-full sm:w-auto"
-                    >
-                        <Plus className="mr-2 h-4 w-4" /> New Transaction
-                    </Button>
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                        {bankAccounts.length >= 2 && (
+                            <Button
+                                onClick={() => setTransferModalOpen(true)}
+                                variant="outline"
+                                className="w-full sm:w-auto"
+                            >
+                                <ArrowLeftRight className="mr-2 h-4 w-4" /> Transfer Money
+                            </Button>
+                        )}
+                        <Button
+                            onClick={openCreateModal}
+                            className="w-full sm:w-auto"
+                        >
+                            <Plus className="mr-2 h-4 w-4" /> New Transaction
+                        </Button>
+                    </div>
                 </div>
 
                 {/* Filters */}
@@ -222,7 +269,7 @@ export default function TransactionsIndex({
                             <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                             <Input
                                 id="search"
-                                placeholder="Search description or category..."
+                                placeholder="Search description, bank, category..."
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
                                 className="pr-8 pl-9"
@@ -245,8 +292,30 @@ export default function TransactionsIndex({
                     <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
                         <div className="grid gap-1.5">
                             <Label
+                                htmlFor="filter-bank-account"
+                                className="text-xs text-muted-foreground font-medium"
+                            >
+                                Bank Account
+                            </Label>
+                            <select
+                                id="filter-bank-account"
+                                value={bankAccountId}
+                                onChange={handleBankAccountChange}
+                                className="flex h-9 w-full min-w-44 rounded-md border border-input border-neutral-200 bg-transparent px-3 py-1 text-sm shadow-xs transition-colors focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-hidden dark:border-neutral-800 dark:bg-neutral-900"
+                            >
+                                <option value="">All bank accounts</option>
+                                {bankAccounts.map((b) => (
+                                    <option key={b.id} value={b.id}>
+                                        {b.name} ({b.bank_name})
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div className="grid gap-1.5">
+                            <Label
                                 htmlFor="filter-category"
-                                className="text-xs text-muted-foreground"
+                                className="text-xs text-muted-foreground font-medium"
                             >
                                 Category
                             </Label>
@@ -271,7 +340,7 @@ export default function TransactionsIndex({
                         <div className="grid gap-1.5">
                             <Label
                                 htmlFor="filter-from-date"
-                                className="text-xs text-muted-foreground"
+                                className="text-xs text-muted-foreground font-medium"
                             >
                                 From
                             </Label>
@@ -287,7 +356,7 @@ export default function TransactionsIndex({
                         <div className="grid gap-1.5">
                             <Label
                                 htmlFor="filter-to-date"
-                                className="text-xs text-muted-foreground"
+                                className="text-xs text-muted-foreground font-medium"
                             >
                                 To
                             </Label>
@@ -308,6 +377,11 @@ export default function TransactionsIndex({
                         {filters.search && (
                             <span className="inline-flex items-center rounded-full bg-neutral-100 px-2 py-0.5 text-xs font-medium text-neutral-800 dark:bg-neutral-800 dark:text-neutral-200">
                                 Search: {filters.search}
+                            </span>
+                        )}
+                        {filters.bank_account_id && (
+                            <span className="inline-flex items-center rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-700 dark:bg-blue-950/40 dark:text-blue-300">
+                                Bank: {bankAccounts.find(b => b.id == filters.bank_account_id)?.name || 'Unknown'}
                             </span>
                         )}
                         {filters.category_id && (
@@ -338,6 +412,7 @@ export default function TransactionsIndex({
                             <thead>
                                 <tr className="border-b bg-muted/50 font-medium text-muted-foreground">
                                     <th className="p-4">Date</th>
+                                    <th className="p-4">Bank Account</th>
                                     <th className="p-4">Category</th>
                                     <th className="p-4">Type</th>
                                     <th className="p-4">Amount</th>
@@ -346,92 +421,125 @@ export default function TransactionsIndex({
                                 </tr>
                             </thead>
                             <tbody className="divide-y">
-                                {transactions.data.map((transaction) => (
-                                    <tr
-                                        key={transaction.id}
-                                        className="transition-colors hover:bg-muted/30"
-                                    >
-                                        <td className="p-4 whitespace-nowrap">
-                                            {formatDate(transaction.date)}
-                                        </td>
-                                        <td className="p-4">
-                                            {transaction.category ? (
-                                                <span className="inline-flex items-center rounded-full bg-neutral-100 px-2 py-0.5 text-xs font-medium text-neutral-800 dark:bg-neutral-800 dark:text-neutral-200">
-                                                    {transaction.category.name}
-                                                </span>
-                                            ) : (
-                                                <span className="text-muted-foreground">
-                                                    -
-                                                </span>
-                                            )}
-                                        </td>
-                                        <td className="p-4 capitalize">
-                                            <span
-                                                className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ${
-                                                    transaction.type ===
-                                                    'credit'
-                                                        ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400'
-                                                        : 'bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400'
-                                                }`}
-                                            >
-                                                {transaction.type}
-                                            </span>
-                                        </td>
-                                        <td className="p-4 font-semibold whitespace-nowrap">
-                                            <span
-                                                className={
-                                                    transaction.type ===
-                                                    'credit'
-                                                        ? 'text-emerald-600 dark:text-emerald-400'
-                                                        : 'text-rose-600 dark:text-rose-400'
-                                                }
-                                            >
-                                                {transaction.type === 'credit'
-                                                    ? '+'
-                                                    : '-'}
-                                                {formatAmount(
-                                                    transaction.amount,
+                                {transactions.data.map((transaction) => {
+                                    const account = transaction.bank_account || transaction.bankAccount;
+                                    const isTransfer = transaction.type === 'transfer';
+                                    const isTransferOut = isTransfer && transaction.transfer_pair_id ? transaction.id < transaction.transfer_pair_id : false;
+
+                                    return (
+                                        <tr
+                                            key={transaction.id}
+                                            className="transition-colors hover:bg-muted/30"
+                                        >
+                                            <td className="p-4 whitespace-nowrap">
+                                                {formatDate(transaction.date)}
+                                            </td>
+                                            <td className="p-4">
+                                                {account ? (
+                                                    <div className="flex items-center gap-1.5">
+                                                        <Landmark className="h-3.5 w-3.5 text-muted-foreground" />
+                                                        <div className="flex flex-col">
+                                                            <span className="font-medium text-foreground">
+                                                                {account.name}
+                                                            </span>
+                                                            <span className="text-[11px] text-muted-foreground">
+                                                                {account.bank_name}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-muted-foreground">-</span>
                                                 )}
-                                            </span>
-                                        </td>
-                                        <td className="max-w-xs truncate p-4 text-muted-foreground">
-                                            {transaction.description || '-'}
-                                        </td>
-                                        <td className="p-4 text-right">
-                                            <div className="flex items-center justify-end gap-2">
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    onClick={() =>
-                                                        openEditModal(
-                                                            transaction,
-                                                        )
-                                                    }
-                                                    title="Edit Transaction"
-                                                >
-                                                    <Pencil className="h-4 w-4" />
-                                                </Button>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                                                    onClick={() =>
-                                                        openDeleteDialog(
-                                                            transaction,
-                                                        )
-                                                    }
-                                                    title="Delete Transaction"
-                                                >
-                                                    <Trash2 className="h-4 w-4" />
-                                                </Button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
+                                            </td>
+                                            <td className="p-4">
+                                                {isTransfer ? (
+                                                    <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-700 dark:bg-blue-950/40 dark:text-blue-300">
+                                                        <ArrowLeftRight className="h-3 w-3" /> Internal Transfer
+                                                    </span>
+                                                ) : transaction.category ? (
+                                                    <span className="inline-flex items-center rounded-full bg-neutral-100 px-2 py-0.5 text-xs font-medium text-neutral-800 dark:bg-neutral-800 dark:text-neutral-200">
+                                                        {transaction.category.name}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-muted-foreground">
+                                                        -
+                                                    </span>
+                                                )}
+                                            </td>
+                                            <td className="p-4 capitalize">
+                                                {isTransfer ? (
+                                                    <span
+                                                        className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ${
+                                                            isTransferOut
+                                                                ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400'
+                                                                : 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-400'
+                                                        }`}
+                                                    >
+                                                        {isTransferOut ? 'Transfer Out' : 'Transfer In'}
+                                                    </span>
+                                                ) : (
+                                                    <span
+                                                        className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ${
+                                                            transaction.type === 'credit'
+                                                                ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400'
+                                                                : 'bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400'
+                                                        }`}
+                                                    >
+                                                        {transaction.type}
+                                                    </span>
+                                                )}
+                                            </td>
+                                            <td className="p-4 font-semibold whitespace-nowrap">
+                                                {isTransfer ? (
+                                                    <span className={isTransferOut ? 'text-amber-600 dark:text-amber-400' : 'text-indigo-600 dark:text-indigo-400'}>
+                                                        {isTransferOut ? '-' : '+'}{formatAmount(transaction.amount)}
+                                                    </span>
+                                                ) : (
+                                                    <span
+                                                        className={
+                                                            transaction.type === 'credit'
+                                                                ? 'text-emerald-600 dark:text-emerald-400'
+                                                                : 'text-rose-600 dark:text-rose-400'
+                                                        }
+                                                    >
+                                                        {transaction.type === 'credit' ? '+' : '-'}
+                                                        {formatAmount(transaction.amount)}
+                                                    </span>
+                                                )}
+                                            </td>
+                                            <td className="max-w-xs truncate p-4 text-muted-foreground">
+                                                {transaction.description || '-'}
+                                            </td>
+                                            <td className="p-4 text-right">
+                                                <div className="flex items-center justify-end gap-2">
+                                                    {!isTransfer && (
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            onClick={() => openEditModal(transaction)}
+                                                            title="Edit Transaction"
+                                                        >
+                                                            <Pencil className="h-4 w-4" />
+                                                        </Button>
+                                                    )}
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                                                        onClick={() => openDeleteDialog(transaction)}
+                                                        title="Delete Transaction"
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
                                 {transactions.data.length === 0 && (
                                     <tr>
                                         <td
-                                            colSpan={6}
+                                            colSpan={7}
                                             className="p-8 text-center text-muted-foreground"
                                         >
                                             {hasActiveFilters
@@ -523,114 +631,154 @@ export default function TransactionsIndex({
                                     </DialogDescription>
                                 </DialogHeader>
 
-                                <div className="grid gap-4 sm:grid-cols-2">
-                                    <div className="grid gap-2">
-                                        <Label htmlFor="date">Date</Label>
-                                        <Input
-                                            id="date"
-                                            name="date"
-                                            type="date"
-                                            defaultValue={
-                                                editingTransaction?.date
-                                                    ? new Date(
-                                                          editingTransaction.date,
-                                                      )
-                                                          .toISOString()
-                                                          .split('T')[0]
-                                                    : new Date()
-                                                          .toISOString()
-                                                          .split('T')[0]
-                                            }
-                                            required
-                                        />
-                                        <InputError message={errors.date} />
+                                {bankAccounts.length === 0 ? (
+                                    <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-300">
+                                        <p className="text-sm font-medium">No Bank Accounts Available</p>
+                                        <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">
+                                            A Bank Account is required to record transactions. Please create a bank account first.
+                                        </p>
+                                        <div className="mt-3">
+                                            <Link
+                                                href={bankAccountsIndex(currentTeam.slug).url}
+                                                className="inline-flex items-center rounded-md bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-amber-700"
+                                            >
+                                                Create Bank Account
+                                            </Link>
+                                        </div>
                                     </div>
+                                ) : (
+                                    <div className="grid gap-4 sm:grid-cols-2">
+                                        <div className="grid gap-2 sm:col-span-2">
+                                            <Label htmlFor="bank_account_id" className="font-semibold">
+                                                Bank Account <span className="text-destructive">*</span>
+                                            </Label>
+                                            <select
+                                                id="bank_account_id"
+                                                name="bank_account_id"
+                                                defaultValue={
+                                                    editingTransaction?.bank_account_id ??
+                                                    (editingTransaction?.bank_account?.id || editingTransaction?.bankAccount?.id || bankAccounts[0]?.id || '')
+                                                }
+                                                required
+                                                className="flex h-9 w-full rounded-md border border-input border-neutral-200 bg-transparent px-3 py-1 text-sm shadow-xs transition-colors focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-hidden disabled:cursor-not-allowed disabled:opacity-50 dark:border-neutral-800 dark:bg-neutral-900 font-medium"
+                                            >
+                                                {bankAccounts.map((b) => (
+                                                    <option key={b.id} value={b.id}>
+                                                        {b.name} — {b.bank_name} {b.account_number ? `(${b.account_number})` : ''}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <InputError message={errors.bank_account_id} />
+                                        </div>
 
-                                    <div className="grid gap-2">
-                                        <Label htmlFor="category_id">
-                                            Category
-                                        </Label>
-                                        <select
-                                            id="category_id"
-                                            name="category_id"
-                                            defaultValue={
-                                                editingTransaction?.category_id ??
-                                                ''
-                                            }
-                                            className="flex h-9 w-full rounded-md border border-input border-neutral-200 bg-transparent px-3 py-1 text-sm shadow-xs transition-colors focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-hidden disabled:cursor-not-allowed disabled:opacity-50 dark:border-neutral-800 dark:bg-neutral-900"
-                                        >
-                                            <option value="">
-                                                No Category
-                                            </option>
-                                            {categories.map((c) => (
-                                                <option key={c.id} value={c.id}>
-                                                    {c.name}
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="date">Date</Label>
+                                            <Input
+                                                id="date"
+                                                name="date"
+                                                type="date"
+                                                defaultValue={
+                                                    editingTransaction?.date
+                                                        ? new Date(
+                                                              editingTransaction.date,
+                                                          )
+                                                              .toISOString()
+                                                              .split('T')[0]
+                                                        : new Date()
+                                                              .toISOString()
+                                                              .split('T')[0]
+                                                }
+                                                required
+                                            />
+                                            <InputError message={errors.date} />
+                                        </div>
+
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="category_id">
+                                                Category
+                                            </Label>
+                                            <select
+                                                id="category_id"
+                                                name="category_id"
+                                                defaultValue={
+                                                    editingTransaction?.category_id ??
+                                                    ''
+                                                }
+                                                className="flex h-9 w-full rounded-md border border-input border-neutral-200 bg-transparent px-3 py-1 text-sm shadow-xs transition-colors focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-hidden disabled:cursor-not-allowed disabled:opacity-50 dark:border-neutral-800 dark:bg-neutral-900"
+                                            >
+                                                <option value="">
+                                                    No Category
                                                 </option>
-                                            ))}
-                                        </select>
-                                        <InputError
-                                            message={errors.category_id}
-                                        />
-                                    </div>
+                                                {categories.map((c) => (
+                                                    <option key={c.id} value={c.id}>
+                                                        {c.name}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <InputError
+                                                message={errors.category_id}
+                                            />
+                                        </div>
 
-                                    <div className="grid gap-2">
-                                        <Label htmlFor="type">Type</Label>
-                                        <select
-                                            id="type"
-                                            name="type"
-                                            defaultValue={
-                                                editingTransaction?.type ??
-                                                'debit'
-                                            }
-                                            required
-                                            className="flex h-9 w-full rounded-md border border-input border-neutral-200 bg-transparent px-3 py-1 text-sm shadow-xs transition-colors focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-hidden disabled:cursor-not-allowed disabled:opacity-50 dark:border-neutral-800 dark:bg-neutral-900"
-                                        >
-                                            <option value="debit">
-                                                Debit (Expense)
-                                            </option>
-                                            <option value="credit">
-                                                Credit (Income)
-                                            </option>
-                                        </select>
-                                        <InputError message={errors.type} />
-                                    </div>
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="type">Type</Label>
+                                            <select
+                                                id="type"
+                                                name="type"
+                                                defaultValue={
+                                                    editingTransaction?.type ??
+                                                    'debit'
+                                                }
+                                                required
+                                                className="flex h-9 w-full rounded-md border border-input border-neutral-200 bg-transparent px-3 py-1 text-sm shadow-xs transition-colors focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-hidden disabled:cursor-not-allowed disabled:opacity-50 dark:border-neutral-800 dark:bg-neutral-900"
+                                            >
+                                                <option value="debit">
+                                                    Debit (Expense)
+                                                </option>
+                                                <option value="credit">
+                                                    Credit (Income)
+                                                </option>
+                                            </select>
+                                            <InputError message={errors.type} />
+                                        </div>
 
-                                    <div className="grid gap-2">
-                                        <Label htmlFor="amount">
-                                            Amount ($)
-                                        </Label>
-                                        <Input
-                                            id="amount"
-                                            name="amount"
-                                            type="number"
-                                            step="0.01"
-                                            placeholder="0.00"
-                                            defaultValue={
-                                                editingTransaction?.amount ?? ''
-                                            }
-                                            required
-                                        />
-                                        <InputError message={errors.amount} />
-                                    </div>
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="amount">
+                                                Amount ($)
+                                            </Label>
+                                            <Input
+                                                id="amount"
+                                                name="amount"
+                                                type="number"
+                                                step="0.01"
+                                                placeholder="0.00"
+                                                defaultValue={
+                                                    editingTransaction?.amount ?? ''
+                                                }
+                                                required
+                                            />
+                                            <InputError message={errors.amount} />
+                                        </div>
 
-                                    <div className="grid gap-2 sm:col-span-2">
-                                        <Label htmlFor="description">
-                                            Description
-                                        </Label>
-                                        <Input
-                                            id="description"
-                                            name="description"
-                                            placeholder="e.g. Weekly grocery shopping"
-                                            defaultValue={
-                                                editingTransaction?.description ??
-                                                ''
-                                            }
-                                        />
-                                        <InputError
-                                            message={errors.description}
-                                        />
+                                        <div className="grid gap-2 sm:col-span-2">
+                                            <Label htmlFor="description">
+                                                Description
+                                            </Label>
+                                            <Input
+                                                id="description"
+                                                name="description"
+                                                placeholder="e.g. Weekly grocery shopping"
+                                                defaultValue={
+                                                    editingTransaction?.description ??
+                                                    ''
+                                                }
+                                            />
+                                            <InputError
+                                                message={errors.description}
+                                            />
+                                        </div>
                                     </div>
-                                </div>
+                                )}
 
                                 <DialogFooter className="gap-2">
                                     <DialogClose asChild>
@@ -638,10 +786,124 @@ export default function TransactionsIndex({
                                             Cancel
                                         </Button>
                                     </DialogClose>
-                                    <Button type="submit" disabled={processing}>
+                                    <Button type="submit" disabled={processing || bankAccounts.length === 0}>
                                         {editingTransaction
                                             ? 'Save Changes'
                                             : 'Record Transaction'}
+                                    </Button>
+                                </DialogFooter>
+                            </>
+                        )}
+                    </Form>
+                </DialogContent>
+            </Dialog>
+
+            {/* Transfer Money Modal */}
+            <Dialog open={transferModalOpen} onOpenChange={setTransferModalOpen}>
+                <DialogContent>
+                    <Form
+                        {...transferStore.form({ current_team: currentTeam.slug })}
+                        className="space-y-6"
+                        onSuccess={() => setTransferModalOpen(false)}
+                    >
+                        {({ errors, processing }) => (
+                            <>
+                                <DialogHeader>
+                                    <DialogTitle>Transfer Money Between Accounts</DialogTitle>
+                                    <DialogDescription>
+                                        Move funds directly from one bank account to another without affecting total income or expense reports.
+                                    </DialogDescription>
+                                </DialogHeader>
+
+                                <div className="space-y-4">
+                                    <div className="grid gap-4 sm:grid-cols-2">
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="from_bank_account_id" className="font-semibold">
+                                                From Bank Account <span className="text-destructive">*</span>
+                                            </Label>
+                                            <select
+                                                id="from_bank_account_id"
+                                                name="from_bank_account_id"
+                                                value={fromBankId}
+                                                onChange={(e) => setFromBankId(e.target.value)}
+                                                required
+                                                className="flex h-9 w-full rounded-md border border-input border-neutral-200 bg-transparent px-3 py-1 text-sm shadow-xs transition-colors focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-hidden dark:border-neutral-800 dark:bg-neutral-900 font-medium"
+                                            >
+                                                {bankAccounts.map((b) => (
+                                                    <option key={b.id} value={b.id} disabled={String(b.id) === toBankId}>
+                                                        {b.name} ({b.bank_name})
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <InputError message={errors.from_bank_account_id} />
+                                        </div>
+
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="to_bank_account_id" className="font-semibold">
+                                                To Bank Account <span className="text-destructive">*</span>
+                                            </Label>
+                                            <select
+                                                id="to_bank_account_id"
+                                                name="to_bank_account_id"
+                                                value={toBankId}
+                                                onChange={(e) => setToBankId(e.target.value)}
+                                                required
+                                                className="flex h-9 w-full rounded-md border border-input border-neutral-200 bg-transparent px-3 py-1 text-sm shadow-xs transition-colors focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-hidden dark:border-neutral-800 dark:bg-neutral-900 font-medium"
+                                            >
+                                                {bankAccounts.map((b) => (
+                                                    <option key={b.id} value={b.id} disabled={String(b.id) === fromBankId}>
+                                                        {b.name} ({b.bank_name})
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <InputError message={errors.to_bank_account_id} />
+                                        </div>
+                                    </div>
+
+                                    <div className="grid gap-4 sm:grid-cols-2">
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="transfer_date">Date</Label>
+                                            <Input
+                                                id="transfer_date"
+                                                name="date"
+                                                type="date"
+                                                defaultValue={new Date().toISOString().split('T')[0]}
+                                                required
+                                            />
+                                            <InputError message={errors.date} />
+                                        </div>
+
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="transfer_amount">Amount ($)</Label>
+                                            <Input
+                                                id="transfer_amount"
+                                                name="amount"
+                                                type="number"
+                                                step="0.01"
+                                                placeholder="0.00"
+                                                required
+                                            />
+                                            <InputError message={errors.amount} />
+                                        </div>
+                                    </div>
+
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="transfer_description">Description / Notes (Optional)</Label>
+                                        <Input
+                                            id="transfer_description"
+                                            name="description"
+                                            placeholder="e.g. Savings allocation for the month"
+                                        />
+                                        <InputError message={errors.description} />
+                                    </div>
+                                </div>
+
+                                <DialogFooter className="gap-2">
+                                    <DialogClose asChild>
+                                        <Button variant="secondary">Cancel</Button>
+                                    </DialogClose>
+                                    <Button type="submit" disabled={processing || fromBankId === toBankId}>
+                                        Execute Transfer
                                     </Button>
                                 </DialogFooter>
                             </>
@@ -662,7 +924,7 @@ export default function TransactionsIndex({
                                     ? formatAmount(transactionToDelete.amount)
                                     : ''}
                             </span>
-                            ? This action cannot be undone.
+                            ? {transactionToDelete?.type === 'transfer' ? 'Deleting this transfer will also delete its paired transaction.' : 'This action cannot be undone.'}
                         </DialogDescription>
                     </DialogHeader>
                     <DialogFooter className="gap-2">

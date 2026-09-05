@@ -18,12 +18,16 @@ class TransactionController extends Controller
     public function index(Request $request, Team $current_team): Response
     {
         $transactions = $current_team->transactions()
-            ->with('category')
+            ->with(['category', 'bankAccount'])
             ->when($request->search, function ($query, $search) {
                 $query->where(function ($q) use ($search) {
                     $q->where('description', 'like', "%{$search}%")
                         ->orWhereHas('category', function ($cq) use ($search) {
                             $cq->where('name', 'like', "%{$search}%");
+                        })
+                        ->orWhereHas('bankAccount', function ($bq) use ($search) {
+                            $bq->where('name', 'like', "%{$search}%")
+                                ->orWhere('bank_name', 'like', "%{$search}%");
                         });
                 });
             })
@@ -34,6 +38,9 @@ class TransactionController extends Controller
                 } else {
                     $query->where('category_id', $categoryId);
                 }
+            })
+            ->when($request->filled('bank_account_id'), function ($query) use ($request) {
+                $query->where('bank_account_id', $request->bank_account_id);
             })
             ->when($request->from_date, function ($query, $fromDate) {
                 $query->where('date', '>=', $fromDate);
@@ -50,10 +57,15 @@ class TransactionController extends Controller
             ->orderBy('name')
             ->get();
 
+        $bankAccounts = $current_team->bankAccounts()
+            ->orderBy('name')
+            ->get();
+
         return Inertia::render('transactions/index', [
             'transactions' => $transactions,
             'categories' => $categories,
-            'filters' => $request->only(['search', 'category_id', 'from_date', 'to_date']),
+            'bankAccounts' => $bankAccounts,
+            'filters' => $request->only(['search', 'category_id', 'bank_account_id', 'from_date', 'to_date']),
         ]);
     }
 
@@ -64,11 +76,15 @@ class TransactionController extends Controller
     {
         $validated = $request->validate([
             'date' => ['required', 'date'],
+            'bank_account_id' => [
+                'required',
+                Rule::exists('bank_accounts', 'id')->where('team_id', $current_team->id),
+            ],
             'category_id' => [
                 'nullable',
                 Rule::exists('categories', 'id')->where('team_id', $current_team->id),
             ],
-            'type' => ['required', 'string', Rule::in(['credit', 'debit'])],
+            'type' => ['required', 'string', Rule::in(['credit', 'debit', 'transfer'])],
             'amount' => ['required', 'numeric', 'min:0.01'],
             'description' => ['nullable', 'string', 'max:1000'],
         ]);
@@ -92,11 +108,15 @@ class TransactionController extends Controller
 
         $validated = $request->validate([
             'date' => ['required', 'date'],
+            'bank_account_id' => [
+                'required',
+                Rule::exists('bank_accounts', 'id')->where('team_id', $current_team->id),
+            ],
             'category_id' => [
                 'nullable',
                 Rule::exists('categories', 'id')->where('team_id', $current_team->id),
             ],
-            'type' => ['required', 'string', Rule::in(['credit', 'debit'])],
+            'type' => ['required', 'string', Rule::in(['credit', 'debit', 'transfer'])],
             'amount' => ['required', 'numeric', 'min:0.01'],
             'description' => ['nullable', 'string', 'max:1000'],
         ]);
@@ -117,6 +137,12 @@ class TransactionController extends Controller
     public function destroy(Request $request, Team $current_team, Transaction $transaction): RedirectResponse
     {
         abort_unless($transaction->team_id === $current_team->id, 403);
+
+        if ($transaction->transfer_pair_id) {
+            $pairId = $transaction->transfer_pair_id;
+            $transaction->update(['transfer_pair_id' => null]);
+            Transaction::where('id', $pairId)->delete();
+        }
 
         $transaction->delete();
 

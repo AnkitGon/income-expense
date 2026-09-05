@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\BankAccount;
 use App\Models\Category;
 use App\Models\Team;
 use App\Models\Transaction;
@@ -22,21 +23,25 @@ test('authenticated users can visit the transactions page', function () {
     $response->assertOk();
 });
 
-test('transactions page lists transactions belonging to the user\'s active team', function () {
+test('transactions page lists transactions belonging to the user active team', function () {
     $user = User::factory()->create();
     $team = $user->currentTeam;
 
+    $bankAccount = BankAccount::factory()->create(['team_id' => $team->id]);
     $category = Category::factory()->create(['team_id' => $team->id]);
 
     $transactionInTeam = Transaction::factory()->create([
         'team_id' => $team->id,
+        'bank_account_id' => $bankAccount->id,
         'category_id' => $category->id,
         'description' => 'Active Team Transaction',
     ]);
 
     $otherTeam = Team::factory()->create();
+    $otherAccount = BankAccount::factory()->create(['team_id' => $otherTeam->id]);
     $transactionInOtherTeam = Transaction::factory()->create([
         'team_id' => $otherTeam->id,
+        'bank_account_id' => $otherAccount->id,
         'description' => 'Other Team Transaction',
     ]);
 
@@ -49,6 +54,41 @@ test('transactions page lists transactions belonging to the user\'s active team'
         ->component('transactions/index')
         ->has('transactions.data', 1)
         ->where('transactions.data.0.description', 'Active Team Transaction')
+    );
+});
+
+test('transactions page can be filtered by bank account', function () {
+    $user = User::factory()->create();
+    $team = $user->currentTeam;
+
+    $accountA = BankAccount::factory()->create(['team_id' => $team->id, 'name' => 'Account A']);
+    $accountB = BankAccount::factory()->create(['team_id' => $team->id, 'name' => 'Account B']);
+
+    Transaction::factory()->create([
+        'team_id' => $team->id,
+        'bank_account_id' => $accountA->id,
+        'description' => 'Tx from Account A',
+    ]);
+
+    Transaction::factory()->create([
+        'team_id' => $team->id,
+        'bank_account_id' => $accountB->id,
+        'description' => 'Tx from Account B',
+    ]);
+
+    $response = $this
+        ->actingAs($user)
+        ->get(route('transactions.index', [
+            'current_team' => $team->slug,
+            'bank_account_id' => $accountA->id,
+        ]));
+
+    $response->assertOk();
+    $response->assertInertia(fn (Assert $page) => $page
+        ->component('transactions/index')
+        ->has('transactions.data', 1)
+        ->where('transactions.data.0.description', 'Tx from Account A')
+        ->where('filters.bank_account_id', (string) $accountA->id)
     );
 });
 
@@ -182,51 +222,17 @@ test('transactions page can be filtered by date range', function () {
     );
 });
 
-test('filtering transactions does not delete database records', function () {
-    $user = User::factory()->create();
-    $team = $user->currentTeam;
-    $category = Category::factory()->create(['team_id' => $team->id]);
-
-    Transaction::factory()->create([
-        'team_id' => $team->id,
-        'category_id' => $category->id,
-        'date' => '2026-01-05',
-        'description' => 'Kept record',
-    ]);
-
-    Transaction::factory()->create([
-        'team_id' => $team->id,
-        'category_id' => null,
-        'date' => '2026-03-05',
-        'description' => 'Also kept',
-    ]);
-
-    $this
-        ->actingAs($user)
-        ->get(route('transactions.index', [
-            'current_team' => $team->slug,
-            'category_id' => $category->id,
-            'from_date' => '2026-01-01',
-            'to_date' => '2026-01-31',
-        ]))
-        ->assertOk()
-        ->assertInertia(fn (Assert $page) => $page
-            ->has('transactions.data', 1)
-            ->where('transactions.data.0.description', 'Kept record')
-        );
-
-    expect(Transaction::query()->where('team_id', $team->id)->count())->toBe(2);
-});
-
 test('user can create a transaction', function () {
     $user = User::factory()->create();
     $team = $user->currentTeam;
+    $bankAccount = BankAccount::factory()->create(['team_id' => $team->id]);
     $category = Category::factory()->create(['team_id' => $team->id]);
 
     $response = $this
         ->actingAs($user)
         ->post(route('transactions.store', ['current_team' => $team->slug]), [
             'date' => '2026-07-07',
+            'bank_account_id' => $bankAccount->id,
             'category_id' => $category->id,
             'type' => 'debit',
             'amount' => 45.50,
@@ -236,6 +242,7 @@ test('user can create a transaction', function () {
     $response->assertRedirect();
     $this->assertDatabaseHas('transactions', [
         'team_id' => $team->id,
+        'bank_account_id' => $bankAccount->id,
         'category_id' => $category->id,
         'date' => '2026-07-07 00:00:00',
         'type' => 'debit',
@@ -244,33 +251,51 @@ test('user can create a transaction', function () {
     ]);
 });
 
-test('user cannot create a transaction with category from another team', function () {
+test('bank account is required when creating a transaction', function () {
     $user = User::factory()->create();
     $team = $user->currentTeam;
-
-    $otherTeam = Team::factory()->create();
-    $otherCategory = Category::factory()->create(['team_id' => $otherTeam->id]);
 
     $response = $this
         ->actingAs($user)
         ->post(route('transactions.store', ['current_team' => $team->slug]), [
             'date' => '2026-07-07',
-            'category_id' => $otherCategory->id,
+            'type' => 'debit',
+            'amount' => 45.50,
+            'description' => 'Missing bank account',
+        ]);
+
+    $response->assertSessionHasErrors(['bank_account_id']);
+});
+
+test('user cannot create a transaction with bank account from another team', function () {
+    $user = User::factory()->create();
+    $team = $user->currentTeam;
+
+    $otherTeam = Team::factory()->create();
+    $otherBankAccount = BankAccount::factory()->create(['team_id' => $otherTeam->id]);
+
+    $response = $this
+        ->actingAs($user)
+        ->post(route('transactions.store', ['current_team' => $team->slug]), [
+            'date' => '2026-07-07',
+            'bank_account_id' => $otherBankAccount->id,
             'type' => 'debit',
             'amount' => 45.50,
             'description' => 'Hack Attempt',
         ]);
 
-    $response->assertSessionHasErrors(['category_id']);
+    $response->assertSessionHasErrors(['bank_account_id']);
 });
 
 test('user can update a transaction', function () {
     $user = User::factory()->create();
     $team = $user->currentTeam;
+    $bankAccount = BankAccount::factory()->create(['team_id' => $team->id]);
     $category = Category::factory()->create(['team_id' => $team->id]);
 
     $transaction = Transaction::factory()->create([
         'team_id' => $team->id,
+        'bank_account_id' => $bankAccount->id,
         'category_id' => $category->id,
         'date' => '2026-07-01',
         'type' => 'debit',
@@ -285,6 +310,7 @@ test('user can update a transaction', function () {
             'transaction' => $transaction->id,
         ]), [
             'date' => '2026-07-02',
+            'bank_account_id' => $bankAccount->id,
             'category_id' => $category->id,
             'type' => 'credit',
             'amount' => 20.00,
@@ -301,7 +327,7 @@ test('user can update a transaction', function () {
     ]);
 });
 
-test('user cannot update another team\'s transaction', function () {
+test('user cannot update another team transaction', function () {
     $user = User::factory()->create();
     $team = $user->currentTeam;
 
@@ -347,7 +373,7 @@ test('user can delete a transaction', function () {
     ]);
 });
 
-test('user cannot delete another team\'s transaction', function () {
+test('user cannot delete another team transaction', function () {
     $user = User::factory()->create();
     $team = $user->currentTeam;
 

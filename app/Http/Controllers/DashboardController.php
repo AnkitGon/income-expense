@@ -36,6 +36,7 @@ class DashboardController extends Controller
         $selectedMonth = $request->input('month');
         $fromDate = $request->input('from_date');
         $toDate = $request->input('to_date');
+        $bankAccountId = $request->input('bank_account_id');
 
         $isValidRange = false;
         if ($fromDate && $toDate) {
@@ -62,16 +63,72 @@ class DashboardController extends Controller
             $selectedMonth = '';
         }
 
+        $bankAccounts = $current_team->bankAccounts()
+            ->orderBy('name')
+            ->get();
+
+        // Calculate summary for each bank account (grouping)
+        $accountSummaries = $bankAccounts->map(function ($account) use ($current_team, $startDate, $endDate) {
+            $credit = $current_team->transactions()
+                ->where('bank_account_id', $account->id)
+                ->where('type', 'credit')
+                ->whereBetween('date', [$startDate, $endDate])
+                ->sum('amount');
+
+            $debit = $current_team->transactions()
+                ->where('bank_account_id', $account->id)
+                ->where('type', 'debit')
+                ->whereBetween('date', [$startDate, $endDate])
+                ->sum('amount');
+
+            $transferIn = $current_team->transactions()
+                ->where('bank_account_id', $account->id)
+                ->where('type', 'transfer')
+                ->whereColumn('id', '>', 'transfer_pair_id')
+                ->whereBetween('date', [$startDate, $endDate])
+                ->sum('amount');
+
+            $transferOut = $current_team->transactions()
+                ->where('bank_account_id', $account->id)
+                ->where('type', 'transfer')
+                ->whereColumn('id', '<', 'transfer_pair_id')
+                ->whereBetween('date', [$startDate, $endDate])
+                ->sum('amount');
+
+            $totalCredit = $credit + $transferIn;
+            $totalDebit = $debit + $transferOut;
+
+            return [
+                'id' => $account->id,
+                'name' => $account->name,
+                'bank_name' => $account->bank_name,
+                'account_number' => $account->account_number,
+                'credit' => (float) $totalCredit,
+                'debit' => (float) $totalDebit,
+                'income' => (float) $credit,
+                'expenses' => (float) $debit,
+                'transfers_in' => (float) $transferIn,
+                'transfers_out' => (float) $transferOut,
+                'balance' => (float) ($totalCredit - $totalDebit),
+            ];
+        });
+
+        // Query helper for filtered transactions
+        $transactionQuery = fn () => $current_team->transactions()
+            ->when($bankAccountId, function ($query) use ($bankAccountId) {
+                $query->where('bank_account_id', $bankAccountId);
+            });
+
         $categories = $current_team->categories()
             ->get()
-            ->map(function ($category) use ($current_team, $startDate, $endDate) {
-                $credit = $current_team->transactions()
+            ->map(function ($category) use ($transactionQuery, $startDate, $endDate) {
+                $credit = $transactionQuery()
                     ->where('category_id', $category->id)
                     ->where('type', 'credit')
                     ->whereBetween('date', [$startDate, $endDate])
                     ->sum('amount');
 
-                $debit = $current_team->transactions()
+                $debit = $transactionQuery()
                     ->where('category_id', $category->id)
                     ->where('type', 'debit')
                     ->whereBetween('date', [$startDate, $endDate])
@@ -91,13 +148,13 @@ class DashboardController extends Controller
             ->values();
 
         // Include uncategorized transactions
-        $uncategorizedCredit = $current_team->transactions()
+        $uncategorizedCredit = $transactionQuery()
             ->whereNull('category_id')
             ->where('type', 'credit')
             ->whereBetween('date', [$startDate, $endDate])
             ->sum('amount');
 
-        $uncategorizedDebit = $current_team->transactions()
+        $uncategorizedDebit = $transactionQuery()
             ->whereNull('category_id')
             ->where('type', 'debit')
             ->whereBetween('date', [$startDate, $endDate])
@@ -124,6 +181,9 @@ class DashboardController extends Controller
         return Inertia::render('dashboard', [
             'pendingInvitations' => $pendingInvitations,
             'summary' => $sortedCategories,
+            'bankAccounts' => $bankAccounts,
+            'accountSummaries' => $accountSummaries,
+            'selectedBankAccountId' => $bankAccountId ? (int) $bankAccountId : null,
             'selectedMonth' => $selectedMonth,
             'startDate' => $startDate,
             'endDate' => $endDate,
