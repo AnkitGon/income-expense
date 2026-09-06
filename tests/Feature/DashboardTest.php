@@ -313,3 +313,48 @@ test('dashboard filters transaction summary by selected bank account', function 
         ->where('summary.0.credit', 200)
     );
 });
+
+test('dashboard calculates transfersSummary for account reconciliation', function () {
+    $user = User::factory()->create();
+    $team = $user->currentTeam;
+
+    $account1 = BankAccount::factory()->create(['team_id' => $team->id, 'name' => 'Account 1']);
+    $account2 = BankAccount::factory()->create(['team_id' => $team->id, 'name' => 'Account 2']);
+
+    $outbound = Transaction::factory()->create([
+        'team_id' => $team->id,
+        'bank_account_id' => $account1->id,
+        'category_id' => null,
+        'type' => 'transfer',
+        'amount' => 500.00,
+        'date' => Carbon::now()->startOfMonth()->toDateString(),
+    ]);
+
+    $inbound = Transaction::factory()->create([
+        'team_id' => $team->id,
+        'bank_account_id' => $account2->id,
+        'category_id' => null,
+        'type' => 'transfer',
+        'amount' => 500.00,
+        'date' => Carbon::now()->startOfMonth()->toDateString(),
+    ]);
+
+    $outbound->update(['transfer_pair_id' => $inbound->id]);
+    $inbound->update(['transfer_pair_id' => $outbound->id]);
+
+    $response = $this
+        ->actingAs($user)
+        ->get(route('dashboard', [
+            'current_team' => $team->slug,
+            'bank_account_id' => $account1->id,
+        ]));
+
+    $response->assertOk();
+    $response->assertInertia(fn (Assert $page) => $page
+        ->component('dashboard')
+        ->has('summary', 0) // Category summary stays pure with 0 income/expense categories
+        ->where('transfersSummary.transfers_in', 0)
+        ->where('transfersSummary.transfers_out', 500)
+        ->where('transfersSummary.net_transfer', -500)
+    );
+});

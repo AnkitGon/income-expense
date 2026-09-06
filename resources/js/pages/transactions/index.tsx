@@ -1,5 +1,5 @@
 import { Form, Head, Link, usePage, router } from '@inertiajs/react';
-import { ArrowLeftRight, Landmark, Pencil, Plus, Search, Trash2, X } from 'lucide-react';
+import { ArrowDownLeft, ArrowLeftRight, ArrowUpRight, Landmark, Pencil, Plus, Search, Trash2, Wallet, X } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
@@ -20,10 +20,20 @@ import { index, store, update, destroy } from '@/routes/transactions';
 import { store as transferStore } from '@/routes/transfers';
 import type { BankAccount, Category, PaginatedData, Team, Transaction } from '@/types';
 
+type TransactionSummary = {
+    total_income: number;
+    total_expense: number;
+    transfers_in: number;
+    transfers_out: number;
+    total_transfers: number;
+    net_balance: number;
+};
+
 type Props = {
     transactions: PaginatedData<Transaction>;
     categories: Category[];
     bankAccounts: BankAccount[];
+    summary?: TransactionSummary;
     filters: {
         search?: string;
         category_id?: string | number;
@@ -37,6 +47,7 @@ export default function TransactionsIndex({
     transactions,
     categories,
     bankAccounts,
+    summary,
     filters,
 }: Props) {
     const page = usePage();
@@ -255,6 +266,94 @@ export default function TransactionsIndex({
                         </Button>
                     </div>
                 </div>
+
+                {/* Summary Cards */}
+                {summary && (
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                        {/* Total Income */}
+                        <div className="rounded-xl border border-sidebar-border/70 bg-card p-4 shadow-xs dark:border-sidebar-border">
+                            <div className="flex items-center justify-between">
+                                <span className="text-xs font-medium text-muted-foreground">
+                                    Total Income
+                                </span>
+                                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400">
+                                    <ArrowDownLeft className="h-4 w-4" />
+                                </div>
+                            </div>
+                            <div className="mt-2 flex items-baseline justify-between">
+                                <span className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+                                    {formatAmount(summary.total_income)}
+                                </span>
+                            </div>
+                            <p className="mt-1 text-xs text-muted-foreground">
+                                Real earnings (transfers excluded)
+                            </p>
+                        </div>
+
+                        {/* Total Expense */}
+                        <div className="rounded-xl border border-sidebar-border/70 bg-card p-4 shadow-xs dark:border-sidebar-border">
+                            <div className="flex items-center justify-between">
+                                <span className="text-xs font-medium text-muted-foreground">
+                                    Total Expenses
+                                </span>
+                                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-rose-500/10 text-rose-600 dark:bg-rose-500/20 dark:text-rose-400">
+                                    <ArrowUpRight className="h-4 w-4" />
+                                </div>
+                            </div>
+                            <div className="mt-2 flex items-baseline justify-between">
+                                <span className="text-2xl font-bold text-rose-600 dark:text-rose-400">
+                                    {formatAmount(summary.total_expense)}
+                                </span>
+                            </div>
+                            <p className="mt-1 text-xs text-muted-foreground">
+                                Real spending (transfers excluded)
+                            </p>
+                        </div>
+
+                        {/* Internal Transfers */}
+                        <div className="rounded-xl border border-sidebar-border/70 bg-card p-4 shadow-xs dark:border-sidebar-border">
+                            <div className="flex items-center justify-between">
+                                <span className="text-xs font-medium text-muted-foreground">
+                                    Internal Transfers
+                                </span>
+                                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400">
+                                    <ArrowLeftRight className="h-4 w-4" />
+                                </div>
+                            </div>
+                            <div className="mt-2 flex items-baseline justify-between">
+                                <span className="text-2xl font-bold text-foreground">
+                                    {formatAmount(summary.total_transfers)}
+                                </span>
+                            </div>
+                            <p className="mt-1 text-xs text-muted-foreground">
+                                Account cash movement
+                            </p>
+                        </div>
+
+                        {/* Net Savings / Profit */}
+                        <div className="rounded-xl border border-sidebar-border/70 bg-card p-4 shadow-xs dark:border-sidebar-border">
+                            <div className="flex items-center justify-between">
+                                <span className="text-xs font-medium text-muted-foreground">
+                                    Net Profit / Savings
+                                </span>
+                                <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${summary.net_profit >= 0 ? 'bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400' : 'bg-rose-500/10 text-rose-600 dark:bg-rose-500/20 dark:text-rose-400'}`}>
+                                    <Wallet className="h-4 w-4" />
+                                </div>
+                            </div>
+                            <div className="mt-2 flex items-baseline justify-between">
+                                <span className={`text-2xl font-bold ${summary.net_profit >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                                    {summary.net_profit > 0 ? '+' : ''}
+                                    {formatAmount(summary.net_profit)}
+                                </span>
+                            </div>
+                            <p className="mt-1 text-xs text-muted-foreground">
+                                {bankAccountId && (summary.transfers_in > 0 || summary.transfers_out > 0)
+                                    ? `Account Net Balance: ${summary.net_balance > 0 ? '+' : ''}${formatAmount(summary.net_balance)}`
+                                    : 'Real income minus expenses'}
+                            </p>
+                        </div>
+                    </div>
+                )}
 
                 {/* Filters */}
                 <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-end">

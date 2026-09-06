@@ -158,8 +158,11 @@ test('transfers are excluded from total income and expense category reports but 
         ->component('dashboard')
         // Category summary only reflects real income (5000), transfer (10000) is NOT added to income or expense!
         ->has('summary', 1)
+        ->where('summary.0.name', 'Sales')
         ->where('summary.0.credit', 5000)
         ->where('summary.0.debit', 0)
+        ->where('transfersSummary.transfers_in', 10000)
+        ->where('transfersSummary.transfers_out', 10000)
         // Bank account balances correctly reflect transfer
         ->has('accountSummaries', 2)
         ->where('accountSummaries.0.balance', -5000) // Account A: +5000 income - 10000 transfer out = -5000

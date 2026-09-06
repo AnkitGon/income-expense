@@ -551,7 +551,7 @@ edit.head = (args: { current_team: string | number, goal: string | number } | [c
  * @see app/Http/Controllers/GoalController.php:79
  * @route '/{current_team}/goals/{goal}'
  */
-export const update = (args: { current_team: string | { slug: string }, goal: string | number | { id: string | number } } | [current_team: string | { slug: string }, goal: string | number | { id: string | number } ], options?: RouteQueryOptions): RouteDefinition<'put'> => ({
+export const update = (args: { current_team: string | { slug: string }, goal: number | { id: number } } | [current_team: string | { slug: string }, goal: number | { id: number } ], options?: RouteQueryOptions): RouteDefinition<'put'> => ({
     url: update.url(args, options),
     method: 'put',
 })
@@ -566,7 +566,7 @@ update.definition = {
  * @see app/Http/Controllers/GoalController.php:79
  * @route '/{current_team}/goals/{goal}'
  */
-update.url = (args: { current_team: string | { slug: string }, goal: string | number | { id: string | number } } | [current_team: string | { slug: string }, goal: string | number | { id: string | number } ], options?: RouteQueryOptions) => {
+update.url = (args: { current_team: string | { slug: string }, goal: number | { id: number } } | [current_team: string | { slug: string }, goal: number | { id: number } ], options?: RouteQueryOptions) => {
     if (Array.isArray(args)) {
         args = {
                     current_team: args[0],
@@ -596,7 +596,7 @@ update.url = (args: { current_team: string | { slug: string }, goal: string | nu
  * @see app/Http/Controllers/GoalController.php:79
  * @route '/{current_team}/goals/{goal}'
  */
-update.put = (args: { current_team: string | { slug: string }, goal: string | number | { id: string | number } } | [current_team: string | { slug: string }, goal: string | number | { id: string | number } ], options?: RouteQueryOptions): RouteDefinition<'put'> => ({
+update.put = (args: { current_team: string | { slug: string }, goal: number | { id: number } } | [current_team: string | { slug: string }, goal: number | { id: number } ], options?: RouteQueryOptions): RouteDefinition<'put'> => ({
     url: update.url(args, options),
     method: 'put',
 })
@@ -605,7 +605,7 @@ update.put = (args: { current_team: string | { slug: string }, goal: string | nu
  * @see app/Http/Controllers/GoalController.php:79
  * @route '/{current_team}/goals/{goal}'
  */
-update.patch = (args: { current_team: string | { slug: string }, goal: string | number | { id: string | number } } | [current_team: string | { slug: string }, goal: string | number | { id: string | number } ], options?: RouteQueryOptions): RouteDefinition<'patch'> => ({
+update.patch = (args: { current_team: string | { slug: string }, goal: number | { id: number } } | [current_team: string | { slug: string }, goal: number | { id: number } ], options?: RouteQueryOptions): RouteDefinition<'patch'> => ({
     url: update.url(args, options),
     method: 'patch',
 })
@@ -615,7 +615,7 @@ update.patch = (args: { current_team: string | { slug: string }, goal: string | 
  * @see app/Http/Controllers/GoalController.php:79
  * @route '/{current_team}/goals/{goal}'
  */
-    const updateForm = (args: { current_team: string | { slug: string }, goal: string | number | { id: string | number } } | [current_team: string | { slug: string }, goal: string | number | { id: string | number } ], options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+    const updateForm = (args: { current_team: string | { slug: string }, goal: number | { id: number } } | [current_team: string | { slug: string }, goal: number | { id: number } ], options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
         action: update.url(args, {
                     [options?.mergeQuery ? 'mergeQuery' : 'query']: {
                         _method: 'PUT',
@@ -630,7 +630,7 @@ update.patch = (args: { current_team: string | { slug: string }, goal: string | 
  * @see app/Http/Controllers/GoalController.php:79
  * @route '/{current_team}/goals/{goal}'
  */
-        updateForm.put = (args: { current_team: string | { slug: string }, goal: string | number | { id: string | number } } | [current_team: string | { slug: string }, goal: string | number | { id: string | number } ], options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+        updateForm.put = (args: { current_team: string | { slug: string }, goal: number | { id: number } } | [current_team: string | { slug: string }, goal: number | { id: number } ], options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
             action: update.url(args, {
                         [options?.mergeQuery ? 'mergeQuery' : 'query']: {
                             _method: 'PUT',
@@ -644,7 +644,7 @@ update.patch = (args: { current_team: string | { slug: string }, goal: string | 
  * @see app/Http/Controllers/GoalController.php:79
  * @route '/{current_team}/goals/{goal}'
  */
-        updateForm.patch = (args: { current_team: string | { slug: string }, goal: string | number | { id: string | number } } | [current_team: string | { slug: string }, goal: string | number | { id: string | number } ], options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+        updateForm.patch = (args: { current_team: string | { slug: string }, goal: number | { id: number } } | [current_team: string | { slug: string }, goal: number | { id: number } ], options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
             action: update.url(args, {
                         [options?.mergeQuery ? 'mergeQuery' : 'query']: {
                             _method: 'PATCH',
@@ -660,7 +660,7 @@ update.patch = (args: { current_team: string | { slug: string }, goal: string | 
  * @see app/Http/Controllers/GoalController.php:110
  * @route '/{current_team}/goals/{goal}'
  */
-export const destroy = (args: { current_team: string | { slug: string }, goal: string | number | { id: string | number } } | [current_team: string | { slug: string }, goal: string | number | { id: string | number } ], options?: RouteQueryOptions): RouteDefinition<'delete'> => ({
+export const destroy = (args: { current_team: string | { slug: string }, goal: number | { id: number } } | [current_team: string | { slug: string }, goal: number | { id: number } ], options?: RouteQueryOptions): RouteDefinition<'delete'> => ({
     url: destroy.url(args, options),
     method: 'delete',
 })
@@ -675,7 +675,7 @@ destroy.definition = {
  * @see app/Http/Controllers/GoalController.php:110
  * @route '/{current_team}/goals/{goal}'
  */
-destroy.url = (args: { current_team: string | { slug: string }, goal: string | number | { id: string | number } } | [current_team: string | { slug: string }, goal: string | number | { id: string | number } ], options?: RouteQueryOptions) => {
+destroy.url = (args: { current_team: string | { slug: string }, goal: number | { id: number } } | [current_team: string | { slug: string }, goal: number | { id: number } ], options?: RouteQueryOptions) => {
     if (Array.isArray(args)) {
         args = {
                     current_team: args[0],
@@ -705,7 +705,7 @@ destroy.url = (args: { current_team: string | { slug: string }, goal: string | n
  * @see app/Http/Controllers/GoalController.php:110
  * @route '/{current_team}/goals/{goal}'
  */
-destroy.delete = (args: { current_team: string | { slug: string }, goal: string | number | { id: string | number } } | [current_team: string | { slug: string }, goal: string | number | { id: string | number } ], options?: RouteQueryOptions): RouteDefinition<'delete'> => ({
+destroy.delete = (args: { current_team: string | { slug: string }, goal: number | { id: number } } | [current_team: string | { slug: string }, goal: number | { id: number } ], options?: RouteQueryOptions): RouteDefinition<'delete'> => ({
     url: destroy.url(args, options),
     method: 'delete',
 })
@@ -715,7 +715,7 @@ destroy.delete = (args: { current_team: string | { slug: string }, goal: string 
  * @see app/Http/Controllers/GoalController.php:110
  * @route '/{current_team}/goals/{goal}'
  */
-    const destroyForm = (args: { current_team: string | { slug: string }, goal: string | number | { id: string | number } } | [current_team: string | { slug: string }, goal: string | number | { id: string | number } ], options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+    const destroyForm = (args: { current_team: string | { slug: string }, goal: number | { id: number } } | [current_team: string | { slug: string }, goal: number | { id: number } ], options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
         action: destroy.url(args, {
                     [options?.mergeQuery ? 'mergeQuery' : 'query']: {
                         _method: 'DELETE',
@@ -730,7 +730,7 @@ destroy.delete = (args: { current_team: string | { slug: string }, goal: string 
  * @see app/Http/Controllers/GoalController.php:110
  * @route '/{current_team}/goals/{goal}'
  */
-        destroyForm.delete = (args: { current_team: string | { slug: string }, goal: string | number | { id: string | number } } | [current_team: string | { slug: string }, goal: string | number | { id: string | number } ], options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+        destroyForm.delete = (args: { current_team: string | { slug: string }, goal: number | { id: number } } | [current_team: string | { slug: string }, goal: number | { id: number } ], options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
             action: destroy.url(args, {
                         [options?.mergeQuery ? 'mergeQuery' : 'query']: {
                             _method: 'DELETE',

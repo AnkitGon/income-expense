@@ -200,7 +200,7 @@ create.head = (args: { current_team: string | number } | [current_team: string |
     create.form = createForm
 /**
 * @see \App\Http\Controllers\TransactionController::store
- * @see app/Http/Controllers/TransactionController.php:75
+ * @see app/Http/Controllers/TransactionController.php:106
  * @route '/{current_team}/transactions'
  */
 export const store = (args: { current_team: string | { slug: string } } | [current_team: string | { slug: string } ] | string | { slug: string }, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -215,7 +215,7 @@ store.definition = {
 
 /**
 * @see \App\Http\Controllers\TransactionController::store
- * @see app/Http/Controllers/TransactionController.php:75
+ * @see app/Http/Controllers/TransactionController.php:106
  * @route '/{current_team}/transactions'
  */
 store.url = (args: { current_team: string | { slug: string } } | [current_team: string | { slug: string } ] | string | { slug: string }, options?: RouteQueryOptions) => {
@@ -248,7 +248,7 @@ store.url = (args: { current_team: string | { slug: string } } | [current_team: 
 
 /**
 * @see \App\Http\Controllers\TransactionController::store
- * @see app/Http/Controllers/TransactionController.php:75
+ * @see app/Http/Controllers/TransactionController.php:106
  * @route '/{current_team}/transactions'
  */
 store.post = (args: { current_team: string | { slug: string } } | [current_team: string | { slug: string } ] | string | { slug: string }, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -258,7 +258,7 @@ store.post = (args: { current_team: string | { slug: string } } | [current_team:
 
     /**
 * @see \App\Http\Controllers\TransactionController::store
- * @see app/Http/Controllers/TransactionController.php:75
+ * @see app/Http/Controllers/TransactionController.php:106
  * @route '/{current_team}/transactions'
  */
     const storeForm = (args: { current_team: string | { slug: string } } | [current_team: string | { slug: string } ] | string | { slug: string }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -268,7 +268,7 @@ store.post = (args: { current_team: string | { slug: string } } | [current_team:
 
             /**
 * @see \App\Http\Controllers\TransactionController::store
- * @see app/Http/Controllers/TransactionController.php:75
+ * @see app/Http/Controllers/TransactionController.php:106
  * @route '/{current_team}/transactions'
  */
         storeForm.post = (args: { current_team: string | { slug: string } } | [current_team: string | { slug: string } ] | string | { slug: string }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -469,7 +469,7 @@ edit.head = (args: { current_team: string | number, transaction: string | number
     edit.form = editForm
 /**
 * @see \App\Http\Controllers\TransactionController::update
- * @see app/Http/Controllers/TransactionController.php:105
+ * @see app/Http/Controllers/TransactionController.php:136
  * @route '/{current_team}/transactions/{transaction}'
  */
 export const update = (args: { current_team: string | { slug: string }, transaction: number | { id: number } } | [current_team: string | { slug: string }, transaction: number | { id: number } ], options?: RouteQueryOptions): RouteDefinition<'put'> => ({
@@ -484,7 +484,7 @@ update.definition = {
 
 /**
 * @see \App\Http\Controllers\TransactionController::update
- * @see app/Http/Controllers/TransactionController.php:105
+ * @see app/Http/Controllers/TransactionController.php:136
  * @route '/{current_team}/transactions/{transaction}'
  */
 update.url = (args: { current_team: string | { slug: string }, transaction: number | { id: number } } | [current_team: string | { slug: string }, transaction: number | { id: number } ], options?: RouteQueryOptions) => {
@@ -514,7 +514,7 @@ update.url = (args: { current_team: string | { slug: string }, transaction: numb
 
 /**
 * @see \App\Http\Controllers\TransactionController::update
- * @see app/Http/Controllers/TransactionController.php:105
+ * @see app/Http/Controllers/TransactionController.php:136
  * @route '/{current_team}/transactions/{transaction}'
  */
 update.put = (args: { current_team: string | { slug: string }, transaction: number | { id: number } } | [current_team: string | { slug: string }, transaction: number | { id: number } ], options?: RouteQueryOptions): RouteDefinition<'put'> => ({
@@ -523,7 +523,7 @@ update.put = (args: { current_team: string | { slug: string }, transaction: numb
 })
 /**
 * @see \App\Http\Controllers\TransactionController::update
- * @see app/Http/Controllers/TransactionController.php:105
+ * @see app/Http/Controllers/TransactionController.php:136
  * @route '/{current_team}/transactions/{transaction}'
  */
 update.patch = (args: { current_team: string | { slug: string }, transaction: number | { id: number } } | [current_team: string | { slug: string }, transaction: number | { id: number } ], options?: RouteQueryOptions): RouteDefinition<'patch'> => ({
@@ -533,7 +533,7 @@ update.patch = (args: { current_team: string | { slug: string }, transaction: nu
 
     /**
 * @see \App\Http\Controllers\TransactionController::update
- * @see app/Http/Controllers/TransactionController.php:105
+ * @see app/Http/Controllers/TransactionController.php:136
  * @route '/{current_team}/transactions/{transaction}'
  */
     const updateForm = (args: { current_team: string | { slug: string }, transaction: number | { id: number } } | [current_team: string | { slug: string }, transaction: number | { id: number } ], options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -548,7 +548,7 @@ update.patch = (args: { current_team: string | { slug: string }, transaction: nu
 
             /**
 * @see \App\Http\Controllers\TransactionController::update
- * @see app/Http/Controllers/TransactionController.php:105
+ * @see app/Http/Controllers/TransactionController.php:136
  * @route '/{current_team}/transactions/{transaction}'
  */
         updateForm.put = (args: { current_team: string | { slug: string }, transaction: number | { id: number } } | [current_team: string | { slug: string }, transaction: number | { id: number } ], options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -562,7 +562,7 @@ update.patch = (args: { current_team: string | { slug: string }, transaction: nu
         })
             /**
 * @see \App\Http\Controllers\TransactionController::update
- * @see app/Http/Controllers/TransactionController.php:105
+ * @see app/Http/Controllers/TransactionController.php:136
  * @route '/{current_team}/transactions/{transaction}'
  */
         updateForm.patch = (args: { current_team: string | { slug: string }, transaction: number | { id: number } } | [current_team: string | { slug: string }, transaction: number | { id: number } ], options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -578,7 +578,7 @@ update.patch = (args: { current_team: string | { slug: string }, transaction: nu
     update.form = updateForm
 /**
 * @see \App\Http\Controllers\TransactionController::destroy
- * @see app/Http/Controllers/TransactionController.php:137
+ * @see app/Http/Controllers/TransactionController.php:168
  * @route '/{current_team}/transactions/{transaction}'
  */
 export const destroy = (args: { current_team: string | { slug: string }, transaction: number | { id: number } } | [current_team: string | { slug: string }, transaction: number | { id: number } ], options?: RouteQueryOptions): RouteDefinition<'delete'> => ({
@@ -593,7 +593,7 @@ destroy.definition = {
 
 /**
 * @see \App\Http\Controllers\TransactionController::destroy
- * @see app/Http/Controllers/TransactionController.php:137
+ * @see app/Http/Controllers/TransactionController.php:168
  * @route '/{current_team}/transactions/{transaction}'
  */
 destroy.url = (args: { current_team: string | { slug: string }, transaction: number | { id: number } } | [current_team: string | { slug: string }, transaction: number | { id: number } ], options?: RouteQueryOptions) => {
@@ -623,7 +623,7 @@ destroy.url = (args: { current_team: string | { slug: string }, transaction: num
 
 /**
 * @see \App\Http\Controllers\TransactionController::destroy
- * @see app/Http/Controllers/TransactionController.php:137
+ * @see app/Http/Controllers/TransactionController.php:168
  * @route '/{current_team}/transactions/{transaction}'
  */
 destroy.delete = (args: { current_team: string | { slug: string }, transaction: number | { id: number } } | [current_team: string | { slug: string }, transaction: number | { id: number } ], options?: RouteQueryOptions): RouteDefinition<'delete'> => ({
@@ -633,7 +633,7 @@ destroy.delete = (args: { current_team: string | { slug: string }, transaction: 
 
     /**
 * @see \App\Http\Controllers\TransactionController::destroy
- * @see app/Http/Controllers/TransactionController.php:137
+ * @see app/Http/Controllers/TransactionController.php:168
  * @route '/{current_team}/transactions/{transaction}'
  */
     const destroyForm = (args: { current_team: string | { slug: string }, transaction: number | { id: number } } | [current_team: string | { slug: string }, transaction: number | { id: number } ], options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -648,7 +648,7 @@ destroy.delete = (args: { current_team: string | { slug: string }, transaction: 
 
             /**
 * @see \App\Http\Controllers\TransactionController::destroy
- * @see app/Http/Controllers/TransactionController.php:137
+ * @see app/Http/Controllers/TransactionController.php:168
  * @route '/{current_team}/transactions/{transaction}'
  */
         destroyForm.delete = (args: { current_team: string | { slug: string }, transaction: number | { id: number } } | [current_team: string | { slug: string }, transaction: number | { id: number } ], options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({

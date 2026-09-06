@@ -8,7 +8,7 @@ import { index as transactionsIndex } from '@/routes/transactions';
 import type { BankAccount, DashboardInvitation, Team } from '@/types';
 
 type CategorySummary = {
-    id: number | null;
+    id: number | string | null;
     name: string;
     credit: number;
     debit: number;
@@ -29,9 +29,16 @@ type AccountSummary = {
     balance: number;
 };
 
+type TransfersSummary = {
+    transfers_in: number;
+    transfers_out: number;
+    net_transfer: number;
+};
+
 type Props = {
     pendingInvitations?: DashboardInvitation[];
     summary: CategorySummary[];
+    transfersSummary?: TransfersSummary;
     bankAccounts?: BankAccount[];
     accountSummaries?: AccountSummary[];
     selectedBankAccountId?: number | null;
@@ -43,6 +50,7 @@ type Props = {
 export default function Dashboard({
     pendingInvitations = [],
     summary = [],
+    transfersSummary = { transfers_in: 0, transfers_out: 0, net_transfer: 0 },
     bankAccounts = [],
     accountSummaries = [],
     selectedBankAccountId = null,
@@ -69,9 +77,11 @@ export default function Dashboard({
         setBankAccountId(selectedBankAccountId ? String(selectedBankAccountId) : '');
     }, [startDate, endDate, selectedBankAccountId]);
 
-    const getCategoryTransactionsUrl = (categoryId: number | null) => {
+    const getCategoryTransactionsUrl = (categoryId: number | string | null) => {
         const url = new URL(transactionsIndex(currentTeam.slug).url, window.location.origin);
-        if (categoryId === null) {
+        if (categoryId === 'transfer') {
+            url.searchParams.set('category_id', 'transfer');
+        } else if (categoryId === null) {
             url.searchParams.set('category_id', 'uncategorized');
         } else {
             url.searchParams.set('category_id', String(categoryId));
@@ -427,7 +437,7 @@ export default function Dashboard({
                                 {summary.length > 0 && (
                                     <tfoot>
                                         <tr className="border-t bg-muted/30 font-semibold text-foreground">
-                                            <td className="p-4">Total</td>
+                                            <td className="p-4">Net Income / Profit</td>
                                             <td className="p-4 text-emerald-600 dark:text-emerald-400">
                                                 {formatAmount(totalCredit)}
                                             </td>
@@ -447,6 +457,20 @@ export default function Dashboard({
                                                 </span>
                                             </td>
                                         </tr>
+                                        {(transfersSummary.transfers_in > 0 || transfersSummary.transfers_out > 0) && (
+                                            <tr className="border-t bg-amber-500/5 text-xs text-muted-foreground dark:bg-amber-500/10">
+                                                <td colSpan={3} className="p-3 font-medium">
+                                                    Account Reconciliation (Internal Transfers: In +{formatAmount(transfersSummary.transfers_in)} / Out -{formatAmount(transfersSummary.transfers_out)})
+                                                </td>
+                                                <td className="p-3 text-right font-bold text-foreground">
+                                                    <span className="text-[11px] font-normal text-muted-foreground block">Net Account Balance Change</span>
+                                                    <span className={(grandTotal + transfersSummary.net_transfer) >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}>
+                                                        {(grandTotal + transfersSummary.net_transfer) > 0 ? '+' : ''}
+                                                        {formatAmount(grandTotal + transfersSummary.net_transfer)}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        )}
                                     </tfoot>
                                 )}
                             </table>

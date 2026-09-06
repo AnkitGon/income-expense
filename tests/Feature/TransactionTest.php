@@ -54,6 +54,39 @@ test('transactions page lists transactions belonging to the user active team', f
         ->component('transactions/index')
         ->has('transactions.data', 1)
         ->where('transactions.data.0.description', 'Active Team Transaction')
+        ->has('summary')
+    );
+});
+
+test('transactions page returns accurate summary card metrics based on active filters', function () {
+    $user = User::factory()->create();
+    $team = $user->currentTeam;
+    $account = BankAccount::factory()->create(['team_id' => $team->id]);
+
+    Transaction::factory()->create([
+        'team_id' => $team->id,
+        'bank_account_id' => $account->id,
+        'type' => 'credit',
+        'amount' => 1500.00,
+    ]);
+
+    Transaction::factory()->create([
+        'team_id' => $team->id,
+        'bank_account_id' => $account->id,
+        'type' => 'debit',
+        'amount' => 500.00,
+    ]);
+
+    $response = $this
+        ->actingAs($user)
+        ->get(route('transactions.index', ['current_team' => $team->slug]));
+
+    $response->assertOk();
+    $response->assertInertia(fn (Assert $page) => $page
+        ->component('transactions/index')
+        ->where('summary.total_income', 1500)
+        ->where('summary.total_expense', 500)
+        ->where('summary.net_balance', 1000)
     );
 });
 

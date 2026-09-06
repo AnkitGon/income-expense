@@ -170,6 +170,25 @@ class DashboardController extends Controller
             ]);
         }
 
+        // Calculate internal transfers summary separately for reconciliation
+        $transferIn = $transactionQuery()
+            ->where('type', 'transfer')
+            ->whereColumn('id', '>', 'transfer_pair_id')
+            ->whereBetween('date', [$startDate, $endDate])
+            ->sum('amount');
+
+        $transferOut = $transactionQuery()
+            ->where('type', 'transfer')
+            ->whereColumn('id', '<', 'transfer_pair_id')
+            ->whereBetween('date', [$startDate, $endDate])
+            ->sum('amount');
+
+        $transfersSummary = [
+            'transfers_in' => (float) $transferIn,
+            'transfers_out' => (float) $transferOut,
+            'net_transfer' => (float) ($transferIn - $transferOut),
+        ];
+
         $sortedCategories = $categories->sortBy(function ($item) {
             $isCredit = $item['credit'] > 0;
             $group = $isCredit ? 0 : 1;
@@ -181,6 +200,7 @@ class DashboardController extends Controller
         return Inertia::render('dashboard', [
             'pendingInvitations' => $pendingInvitations,
             'summary' => $sortedCategories,
+            'transfersSummary' => $transfersSummary,
             'bankAccounts' => $bankAccounts,
             'accountSummaries' => $accountSummaries,
             'selectedBankAccountId' => $bankAccountId ? (int) $bankAccountId : null,

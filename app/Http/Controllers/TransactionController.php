@@ -17,8 +17,7 @@ class TransactionController extends Controller
      */
     public function index(Request $request, Team $current_team): Response
     {
-        $transactions = $current_team->transactions()
-            ->with(['category', 'bankAccount'])
+        $baseQuery = fn () => $current_team->transactions()
             ->when($request->search, function ($query, $search) {
                 $query->where(function ($q) use ($search) {
                     $q->where('description', 'like', "%{$search}%")
@@ -33,8 +32,10 @@ class TransactionController extends Controller
             })
             ->when($request->has('category_id'), function ($query) use ($request) {
                 $categoryId = $request->category_id;
-                if ($categoryId === 'uncategorized' || $categoryId === null || $categoryId === '') {
-                    $query->whereNull('category_id');
+                if ($categoryId === 'transfer') {
+                    $query->where('type', 'transfer');
+                } elseif ($categoryId === 'uncategorized' || $categoryId === null || $categoryId === '') {
+                    $query->whereNull('category_id')->where('type', '!=', 'transfer');
                 } else {
                     $query->where('category_id', $categoryId);
                 }
@@ -47,7 +48,28 @@ class TransactionController extends Controller
             })
             ->when($request->to_date, function ($query, $toDate) {
                 $query->where('date', '<=', $toDate);
-            })
+            });
+
+        $totalIncome = (float) $baseQuery()->where('type', 'credit')->sum('amount');
+        $totalExpense = (float) $baseQuery()->where('type', 'debit')->sum('amount');
+
+        $transfersIn = (float) $baseQuery()
+            ->where('type', 'transfer')
+            ->whereColumn('id', '>', 'transfer_pair_id')
+            ->sum('amount');
+
+        $transfersOut = (float) $baseQuery()
+            ->where('type', 'transfer')
+            ->whereColumn('id', '<', 'transfer_pair_id')
+            ->sum('amount');
+
+        $totalTransfers = (float) $baseQuery()->where('type', 'transfer')->sum('amount');
+
+        $netProfit = $totalIncome - $totalExpense;
+        $netAccountBalance = ($totalIncome + $transfersIn) - ($totalExpense + $transfersOut);
+
+        $transactions = $baseQuery()
+            ->with(['category', 'bankAccount'])
             ->latest('date')
             ->latest('id')
             ->paginate(10)
@@ -65,6 +87,15 @@ class TransactionController extends Controller
             'transactions' => $transactions,
             'categories' => $categories,
             'bankAccounts' => $bankAccounts,
+            'summary' => [
+                'total_income' => $totalIncome,
+                'total_expense' => $totalExpense,
+                'transfers_in' => $transfersIn,
+                'transfers_out' => $transfersOut,
+                'total_transfers' => $totalTransfers,
+                'net_profit' => $netProfit,
+                'net_balance' => $netAccountBalance,
+            ],
             'filters' => $request->only(['search', 'category_id', 'bank_account_id', 'from_date', 'to_date']),
         ]);
     }
